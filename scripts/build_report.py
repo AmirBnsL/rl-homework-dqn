@@ -185,7 +185,7 @@ def include_figure(name: str, caption: str) -> str:
     path = os.path.join(FIGURES, f"{name}.png")
     if not os.path.exists(path):
         return f"_(figure {name} not available yet)_"
-    return f"![{caption}](figures/{name}.png){{width=86%}}\n"
+    return f"![{caption}](figures/{name}.png){{width=80%}}\n"
 
 
 TEXT_SYMBOLS = {

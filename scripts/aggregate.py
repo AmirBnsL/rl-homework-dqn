@@ -54,7 +54,7 @@ def ex1_figure(env_name: str, runs_dir: str) -> str | None:
         plt.close(fig)
         return path
 
-    fig, axes = plt.subplots(2, 3, figsize=(16, 7))  # rows are scaled independently
+    fig, axes = plt.subplots(2, 3, figsize=(16, 6.2))  # rows are scaled independently
     axes[0][1].sharey(axes[0][0])
     axes[0][2].sharey(axes[0][0])
     for ax, (a, b) in zip(axes[0], pairs):
@@ -130,7 +130,7 @@ def ex2_figure(env_name: str, runs_dir: str) -> str | None:
         return None
     spec = ENV_SPECS[env_name]
     x_key = "steps" if env_name == "pong" else "episode"
-    fig, axes = plt.subplots(2, 2, figsize=(13, 8))
+    fig, axes = plt.subplots(2, 2, figsize=(12, 7))
 
     plot_curves(axes[0][0], {variant_label(v): r for v, r in results.items()}, window=20,
                 x_key=x_key, threshold=spec["target_score"], title="learning curves")

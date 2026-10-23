@@ -45,8 +45,7 @@ re-training.
 | Solved | 475 | 200 | 18 |
 | Network | MLP 4-64-64-2 | MLP 8-128-128-4 | Nature CNN, 1 687 206 parameters |
 | lr / γ | 5e-4 / 0.99 | 5e-4 / 0.99 | 1e-4 / 0.99 |
-| buffer / batch | 100 000 / 64 | 100 000 / 64 | 100 000 (uint8) / 32 |
-| learn every | 1 | 4 | 1 |
+| buffer / batch / learn every | 100 000 / 64 / 1 | 100 000 / 64 / 4 | 100 000 (uint8) / 32 / 1 |
 | warm-up | 64 | 64 | 10 000 |
 | target update C | 100 | 250 | 1 000 |
 | ε | 1.0 → 0.05 / 10 000 | 1.0 → 0.05 / 25 000 | 1.0 → 0.01 / 1 000 000 |
@@ -82,15 +81,13 @@ documented minibatches, and `compute_targets` matches the formulas of the assign
 
 {{verdicts:cartpole:ex1}}
 
-On CartPole all four variants end up with a usable policy, and no difference clears the band across
-seeds: at 300 episodes the task is too short and too seed-sensitive to separate the ingredients, and
-we say so rather than read a ranking into the noise (the soft target is the only variant whose
-*worst* seed clears 475, which is why it is the one marked as solved). What does separate them is the
-*value* scale. The reference plateaus at $Q \approx 124$, already above the $1/(1-\gamma) = 100$
-bound that a reward of +1 per step imposes; the no-target agent reaches 400–600, because its targets
-chase themselves, and its policy keeps working while its values diverge; the no-replay agent never
-builds a consistent estimate at all. That is the first hint of what the target network really
-controls: not the return, but the calibration of the values behind it.
+On CartPole all four variants end up with a usable policy and **no difference clears the band across
+seeds**: at 300 episodes the task is too short and too seed-sensitive, and we say so rather than read
+a ranking into the noise (the soft target is the only variant whose *worst* seed clears 475). What
+does separate them is the *value* scale: the reference plateaus at $Q \approx 124$, already above the
+$1/(1-\gamma) = 100$ bound, the no-target agent reaches 400–600 while its policy keeps working, and
+the no-replay agent never builds a consistent estimate. That is the first hint of what the target
+network really controls — not the return, but the calibration of the values behind it.
 
 ## 3.2 LunarLander-v3
 
@@ -119,8 +116,15 @@ much more time to accumulate than on CartPole.
 {{verdicts:pong:ex1}}
 
 Pong is played from pixels with a Nature CNN and 6 actions; a random agent scores about −20 and the
-convention for "solved" is 18. The budget is identical for all variants and seeds (see §2): the
-calibration that justified it is described in §6.
+convention for "solved" is 18. At the uniform budget of __PONG_BUDGET__ the task sits at the edge of
+what DQN learns in a single run, and the ablation separates *learning* from *not learning* rather
+than ranking the variants: the reference scores −4.1, −11.2 and −21.0 on its three seeds (one seed
+never leaves the random-agent level), the soft target is the only variant whose mean is positive
+(+5.1, −9.5, −3.9), and **all three no-replay seeds sit at exactly −21.0** with a flat curve — the
+same signature as the −180 collapse on LunarLander, now without the possibility of mistaking it for
+noise. The bands across seeds (17–20 points) are wider than the gaps between the remaining variants,
+so no finer claim is made: at 10^6 steps the ordering would have room to emerge, and §6 explains why
+that budget was out of reach here.
 
 # 4. Exercise 2 — Double DQN and Dueling DQN
 
@@ -251,22 +255,18 @@ run, which is what every notebook re-plots.
 
 ## 6.1 Limitations of this protocol
 
-* **Three seeds is the protocol's floor, not a luxury.** The min–max band across three seeds is a
-  conservative criterion: with one outlier seed the band can exceed the effect we are looking for.
-  This is exactly what happens on CartPole, where we refuse to rank the variants, and it is the main
-  reason no claim in this report rests on a single environment.
+* **Three seeds is the protocol's floor.** The min–max band across three seeds is a conservative
+  criterion: one outlier seed can make the band exceed the effect we are looking for, which is
+  exactly what happens on CartPole and why no claim here rests on a single environment.
 * **Pong is measured below its reference budget.** At __PONG_BUDGET__ the task is at the edge of what
   DQN can learn in one run: a random agent scores −20 and one of our reference seeds finishes at
   −21, i.e. it did not learn at all. The Pong comparison is therefore a comparison *in this regime*;
   it is uniform across variants and seeds, but it is not the 10^6-step regime of the reference paper.
-* **The bias is measured on each agent's own states.** The metric compares the predicted value with
-  the return actually obtained on the states the greedy policy visits, so it mixes value error with a
-  different state distribution per agent. The *ordering* between agents is the meaningful part, and
-  the training-time Q-value curves — which use the same minibatch distribution for every agent —
-  corroborate it independently.
-* **One map, one grid size.** TreasureGrid uses a single 6 x 6 layout with two traps; the versions
-  change the representation and the dynamics, not the difficulty of the map. A second layout would
-  be needed to claim the conclusions generalise beyond this instance.
+* **The bias is measured on each agent's own states**, so it mixes value error with a different state
+  distribution per agent; the *ordering* is the meaningful part, and the training-time Q-value curves
+  (same minibatch distribution for everyone) corroborate it independently.
+* **One map, one grid size.** TreasureGrid uses a single 6 x 6 layout; the versions change the
+  representation and the dynamics, not the difficulty of the map.
 
 # 7. Conclusion
 
@@ -274,9 +274,9 @@ The three experiments agree on some points and contradict the textbook on others
 three seeds and a band were for:
 
 * **Experience replay is not optional.** Removing it costs nothing on CartPole, but on LunarLander
-  it is a 323-point collapse (band 42) and on Pong it is the difference between learning and not
-  learning at all. The CartPole result is a warning about the protocol: an easy task hides a
-  broken algorithm.
+  it is a 323-point collapse (band 42) and on Pong all three no-replay seeds stay at exactly −21.0,
+  the random-agent score, while the reference reaches −4.1 on its best seed. The CartPole result is
+  a warning about the protocol: an easy task hides a broken algorithm.
 * **The target network does not buy return at this budget — it buys calibration.** On LunarLander
   the no-target variant is *better* (233 against 197, inside the band), on CartPole it is slightly
   worse, and on neither does it cost what the theory suggests. What it does control is the value
