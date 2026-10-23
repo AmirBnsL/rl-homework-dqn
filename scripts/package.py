@@ -61,6 +61,10 @@ def collect() -> list[str]:
             for name in names:
                 if name.endswith((".pyc", ".tmp", ".tmp.npz")):
                     continue
+                # every run keeps its network in runs/, but only the best seed of each agent has to
+                # be delivered: shipping all of them would add ~150 MB of Pong weights
+                if directory == "runs" and name.endswith(".pth"):
+                    continue
                 files.append(os.path.relpath(os.path.join(current, name), ROOT))
     for optional in ("video.mp4", "video_pong.mp4", "video_treasure_v0.mp4"):
         if os.path.exists(os.path.join(ROOT, optional)):

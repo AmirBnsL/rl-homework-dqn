@@ -234,7 +234,9 @@ def env_cells(env_name: str, variants, pairs):
         print(f"  truncation       : {{spec['max_episode_steps']}} steps")
         env.close()
 
-        agent0 = build_agent(make_env(ENV_NAME), ENV_NAME, "hard", seed=0, device=DEVICE)
+        probe_env = make_env(ENV_NAME)
+        agent0 = build_agent(probe_env, ENV_NAME, "hard", seed=0, device=DEVICE,
+                             buffer_size=1_000)  # a probe needs no 5.6 GB replay buffer
         cfg = agent_kwargs(ENV_NAME, "hard")
         architecture = ("MLP " + " -> ".join([str(np.prod(spec['obs_shape'])), str(cfg['hidden_dim']),
                                               str(cfg['hidden_dim']), str(spec['n_actions'])])
@@ -328,7 +330,8 @@ def sanity_cells(env_name: str, variants: tuple[str, ...]):
             assert torch.allclose(agent0.compute_targets(rewards, next_states, terminateds), hard_target)
             print("hard DQN target      : y = r + gamma (1 - terminated) max_a' Q(s', a'; theta-)  OK")
 
-            double_agent = build_agent(make_env(ENV_NAME), ENV_NAME, "double", seed=0, device=DEVICE)
+            double_agent = build_agent(make_env(ENV_NAME), ENV_NAME, "double", seed=0,
+                                       device=DEVICE, buffer_size=1_000)
             a_star = double_agent.q_net(next_states).argmax(dim=1, keepdim=True)
             double_target = (rewards + double_agent.gamma * (1 - terminateds)
                              * double_agent.target_net(next_states).gather(1, a_star).squeeze(1))
@@ -336,7 +339,8 @@ def sanity_cells(env_name: str, variants: tuple[str, ...]):
                                   double_target)
             print("Double DQN target    : theta picks a*, theta- evaluates it                   OK")
 
-            dueling_agent = build_agent(make_env(ENV_NAME), ENV_NAME, "dueling", seed=0, device=DEVICE)
+            dueling_agent = build_agent(make_env(ENV_NAME), ENV_NAME, "dueling", seed=0,
+                                        device=DEVICE, buffer_size=1_000)
             q_dueling = dueling_agent.q_net(states)
             print(f"dueling head         : {q_dueling.shape[1]} Q-values from V + A - mean(A)     OK")
             print(f"parameters: standard {agent0.n_parameters:,} -> dueling "

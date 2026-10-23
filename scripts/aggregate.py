@@ -37,7 +37,24 @@ def ex1_figure(env_name: str, runs_dir: str) -> str | None:
     x_key = "steps" if env_name == "pong" else "episode"
     pairs = [("hard", "soft"), ("hard", "no_replay"), ("hard", "no_target")]
 
-    fig, axes = plt.subplots(2, 3, figsize=(16, 8))  # rows are scaled independently
+    if env_name == "pong":
+        # all three comparisons share the same reference: one panel per row reads better and
+        # keeps the report within ten pages
+        fig, axes = plt.subplots(1, 2, figsize=(13, 4))
+        plot_curves(axes[0], {variant_label(v): r for v, r in results.items()}, window=20,
+                    x_key=x_key, threshold=spec["target_score"],
+                    title="moving average over the last 20 games")
+        plot_q_curves(axes[1], {variant_label(v): r for v, r in results.items()},
+                      title="predicted Q-values")
+        axes[0].set_ylabel("game score")
+        fig.suptitle(f"{spec['label']} — ablation of DQN (mean of 3 seeds, band = min–max)", y=1.02)
+        fig.tight_layout()
+        path = os.path.join(FIGURES, f"ex1_{env_name}.png")
+        fig.savefig(path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        return path
+
+    fig, axes = plt.subplots(2, 3, figsize=(16, 7))  # rows are scaled independently
     axes[0][1].sharey(axes[0][0])
     axes[0][2].sharey(axes[0][0])
     for ax, (a, b) in zip(axes[0], pairs):

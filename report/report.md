@@ -33,7 +33,6 @@ re-training.
 
 * **CartPole-v1** --- best agent `soft` with a greedy score of 482.9 (target 475); solvable variants: `soft`.
 * **LunarLander-v3** --- best agent `dueling_double` with a greedy score of 259.6 (target 200); solvable variants: `soft`, `no_target`, `double`, `dueling`, `dueling_double`.
-* **ALE/Pong-v5** --- best agent `hard` with a greedy score of -16.1 (target 18); no variant reaches the target on the mean of three seeds.
 
 # 2. Part 0 --- the three environments
 
@@ -78,7 +77,7 @@ documented minibatches, and `compute_targets` matches the formulas of the assign
 
 ## 3.1 CartPole-v1
 
-![CartPole-v1 --- 20-episode moving average (top) and predicted Q-values (bottom), mean of 3 seeds with the min--max band.](figures/ex1_cartpole.png){width=99%}
+![CartPole-v1 --- 20-episode moving average (top) and predicted Q-values (bottom), mean of 3 seeds with the min--max band.](figures/ex1_cartpole.png){width=86%}
 
 
 | variant   |   training score |   greedy |   min seed |   max seed |   bias |
@@ -114,7 +113,7 @@ controls: not the return, but the calibration of the values behind it.
 
 ## 3.2 LunarLander-v3
 
-![LunarLander-v3 --- 20-episode moving average (top) and predicted Q-values (bottom).](figures/ex1_lunarlander.png){width=99%}
+![LunarLander-v3 --- 20-episode moving average (top) and predicted Q-values (bottom).](figures/ex1_lunarlander.png){width=86%}
 
 
 | variant   |   training score |   greedy |   min seed |   max seed |   bias |
@@ -150,9 +149,14 @@ much more time to accumulate than on CartPole.
 
 ## 3.3 ALE/Pong-v5
 
-_(figure ex1_pong not available yet)_
+![Pong --- 20-game moving average and predicted Q-values for the four variants, same budget for every variant and seed.](figures/ex1_pong.png){width=86%}
 
-_(table ex1_pong not available yet --- run scripts/aggregate.py)_
+
+| variant   |   training score |   greedy |   min seed |   max seed |   bias |
+|:----------|-----------------:|---------:|-----------:|-----------:|-------:|
+| hard      |            -13.6 |    -12.1 |        -21 |       -4.1 |    1.7 |
+
+Training score = mean of the last episodes, greedy = 20 evaluation episodes ($\varepsilon$ = 0); min/max = band across the three seeds; bias = predicted Q minus the empirical discounted return.
 
 
 
@@ -181,7 +185,7 @@ evaluation episodes:
 
 $$\text{bias} = \overline{Q(s, a)} - \overline{G_t}, \qquad G_t = \sum_{k \geq 0} \gamma^k r_{t+k}$$
 
-![CartPole-v1 --- curves, Q-values, overestimation bias and greedy returns for the four agents.](figures/ex2_cartpole.png){width=99%}
+![CartPole-v1 --- curves, Q-values, overestimation bias and greedy returns for the four agents.](figures/ex2_cartpole.png){width=86%}
 
 
 | variant        |   training score |   greedy |   min seed |   max seed |   bias |
@@ -209,7 +213,7 @@ On CartPole the two improvements do not separate either: all four agents land in
 bands and the ordering of the bias (47, 59, 47, 41) does not follow the ordering of the returns, so
 we do not claim a winner. CartPole is simply too easy at this budget.
 
-![LunarLander-v3 --- the same four panels.](figures/ex2_lunarlander.png){width=99%}
+![LunarLander-v3 --- the same four panels.](figures/ex2_lunarlander.png){width=86%}
 
 
 | variant        |   training score |   greedy |   min seed |   max seed |   bias |
@@ -245,7 +249,8 @@ _(figure ex2_pong not available yet)_
 
 _(table ex2_pong not available yet --- run scripts/aggregate.py)_
 
-* **Overestimation bias** --- `hard` +1.6; the least biased agent is `hard`.
+* **`double`** --- greedy -7.9 against -12.1 for the reference: it gains 4.2 points (higher) and this is a gap inside the band across seeds, so not conclusive (band 16.9).
+* **Overestimation bias** --- `hard` +1.7, `double` +0.8; the least biased agent is `double`.
 
 # 5. Exercise 3 --- TreasureGrid, an environment written from scratch
 
@@ -268,9 +273,9 @@ Baselines over 50 episodes per version (success rate and episode length, compare
 
 | version   |   random_success |   random_length |   bfs_success |   bfs_length |   bfs_optimal |
 |:----------|-----------------:|----------------:|--------------:|-------------:|--------------:|
-| `v0`      |             0.34 |           31.74 |           1   |         6.18 |          6.18 |
-| `v1`      |             0.24 |           40.6  |           1   |         6.18 |          6.18 |
-| `v2`      |             0.12 |           15.78 |           0.9 |         6.4  |          6.18 |
+| `v0`      |             0.24 |           30.56 |           1   |         6.18 |          6.18 |
+| `v1`      |             0.12 |           34.32 |           1   |         6.18 |          6.18 |
+| `v2`      |             0.06 |           16.22 |           0.9 |         6.4  |          6.18 |
 
 Three agents (`hard`, `double`, `dueling`) are trained on every version, starting from the CartPole
 column of Part 0 (MLP 64, Adam 5e-4, buffer 100 000, batch 64, learn every step, target update every
@@ -282,7 +287,7 @@ make dying on a trap cheaper than finishing the episode. The budget is 800 episo
 themselves run without any modification: only `observation_space` and `action_space` differ from
 CartPole.
 
-![TreasureGrid --- learning curves of the three agents on the three versions (3 seeds).](figures/ex3_curves.png){width=99%}
+![TreasureGrid --- learning curves of the three agents on the three versions (3 seeds).](figures/ex3_curves.png){width=86%}
 
 
 | version   | agent   |   train_score |   greedy |   success |   length |   bfs_optimal |   length_over_bfs |
@@ -324,12 +329,12 @@ the greedy policy is a local, not a global, optimum.
 |:----------------|-------:|---------------:|-----------------:|--------------:|
 | CartPole-v1     |     21 |           1.66 |          50496.9 |          0.58 |
 | LunarLander-v3  |     21 |           5.28 |         427986   |          1.85 |
-| ALE/Pong-v5     |      2 |          30.42 |         300000   |          1.01 |
+| ALE/Pong-v5     |      4 |          30.17 |         300000   |          2.01 |
 | TreasureGrid-v0 |      9 |           0.55 |          25175.3 |          0.08 |
 | TreasureGrid-v1 |      9 |           0.48 |          24704.7 |          0.07 |
 | TreasureGrid-v2 |      9 |           0.24 |          11515.2 |          0.04 |
 
-Total training time in this study: 3.6 core-hours.
+Total training time in this study: 4.6 core-hours.
 
 The Pong budget was fixed after a calibration run on the target GPU: `scripts/calibrate.py` times a
 short training segment of the exact loop used for the real runs and extrapolates. The same budget is
@@ -343,6 +348,25 @@ checkpoint (metrics + network) is written every 50 000 environment steps, so a r
 loses at most one segment. The `.npz` artifacts store the episode returns, the losses and the mean
 Q-value per gradient step, the 20 evaluation episodes and the full hyperparameter dictionary of the
 run, which is what every notebook re-plots.
+
+## 6.1 Limitations of this protocol
+
+* **Three seeds is the protocol's floor, not a luxury.** The min--max band across three seeds is a
+  conservative criterion: with one outlier seed the band can exceed the effect we are looking for.
+  This is exactly what happens on CartPole, where we refuse to rank the variants, and it is the main
+  reason no claim in this report rests on a single environment.
+* **Pong is measured below its reference budget.** At 300,000 env steps the task is at the edge of what
+  DQN can learn in one run: a random agent scores -20 and one of our reference seeds finishes at
+  -21, i.e. it did not learn at all. The Pong comparison is therefore a comparison *in this regime*;
+  it is uniform across variants and seeds, but it is not the 10^6-step regime of the reference paper.
+* **The bias is measured on each agent's own states.** The metric compares the predicted value with
+  the return actually obtained on the states the greedy policy visits, so it mixes value error with a
+  different state distribution per agent. The *ordering* between agents is the meaningful part, and
+  the training-time Q-value curves --- which use the same minibatch distribution for every agent ---
+  corroborate it independently.
+* **One map, one grid size.** TreasureGrid uses a single 6 x 6 layout with two traps; the versions
+  change the representation and the dynamics, not the difficulty of the map. A second layout would
+  be needed to claim the conclusions generalise beyond this instance.
 
 # 7. Conclusion
 

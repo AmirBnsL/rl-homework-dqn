@@ -18,3 +18,6 @@ report/figures/*.png
 report/tables/*.md
 !report/figures/.gitkeep
 !report/tables/.gitkeep
+
+# archive built by scripts/package.py
+*.zip

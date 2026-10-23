@@ -76,10 +76,16 @@ def _decimate(values, max_points: int = 20_000) -> tuple[np.ndarray, int]:
 
 
 def build_agent(env, env_name: str, variant: str, seed: int, device=None,
-                budget=None) -> DQNAgent:
-    """Instantiate the agent for a run, scaling the epsilon schedule to a reduced step budget."""
+                budget=None, buffer_size: int | None = None) -> DQNAgent:
+    """Instantiate the agent for a run, scaling the epsilon schedule to a reduced step budget.
+
+    `buffer_size` overrides the replay capacity: probe agents in the notebooks use a small one, so
+    that opening the Pong notebook does not allocate 5.6 GB per agent.
+    """
     spec = ENV_SPECS[env_name]
     kwargs = agent_kwargs(env_name, variant)
+    if buffer_size is not None:
+        kwargs["buffer_size"] = int(buffer_size)
     agent = DQNAgent(env.observation_space.shape, env.action_space.n, seed=seed,
                      device=device, **kwargs)
     unit, amount = budget if budget is not None else spec["budget"]

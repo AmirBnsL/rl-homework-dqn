@@ -112,7 +112,7 @@ much more time to accumulate than on CartPole.
 
 ## 3.3 ALE/Pong-v5
 
-{{figure:ex1_pong:Pong — moving average over the last 20 games (top) and predicted Q-values (bottom), same budget for every variant.}}
+{{figure:ex1_pong:Pong — 20-game moving average and predicted Q-values for the four variants, same budget for every variant and seed.}}
 
 {{table:ex1_pong}}
 
@@ -238,6 +238,25 @@ checkpoint (metrics + network) is written every 50 000 environment steps, so a r
 loses at most one segment. The `.npz` artifacts store the episode returns, the losses and the mean
 Q-value per gradient step, the 20 evaluation episodes and the full hyperparameter dictionary of the
 run, which is what every notebook re-plots.
+
+## 6.1 Limitations of this protocol
+
+* **Three seeds is the protocol's floor, not a luxury.** The min–max band across three seeds is a
+  conservative criterion: with one outlier seed the band can exceed the effect we are looking for.
+  This is exactly what happens on CartPole, where we refuse to rank the variants, and it is the main
+  reason no claim in this report rests on a single environment.
+* **Pong is measured below its reference budget.** At __PONG_BUDGET__ the task is at the edge of what
+  DQN can learn in one run: a random agent scores −20 and one of our reference seeds finishes at
+  −21, i.e. it did not learn at all. The Pong comparison is therefore a comparison *in this regime*;
+  it is uniform across variants and seeds, but it is not the 10^6-step regime of the reference paper.
+* **The bias is measured on each agent's own states.** The metric compares the predicted value with
+  the return actually obtained on the states the greedy policy visits, so it mixes value error with a
+  different state distribution per agent. The *ordering* between agents is the meaningful part, and
+  the training-time Q-value curves — which use the same minibatch distribution for every agent —
+  corroborate it independently.
+* **One map, one grid size.** TreasureGrid uses a single 6 x 6 layout with two traps; the versions
+  change the representation and the dynamics, not the difficulty of the map. A second layout would
+  be needed to claim the conclusions generalise beyond this instance.
 
 # 7. Conclusion
 
