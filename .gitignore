@@ -5,6 +5,8 @@ __pycache__/
 .ipynb_checkpoints/
 
 # run artifacts: keep metrics, drop the (large) network weights except the delivered ones
+runs/**/*.npz
+runs/**/*.json
 runs/**/*.pth
 deliverables/*.pth
 runs/**/*.tmp.npz

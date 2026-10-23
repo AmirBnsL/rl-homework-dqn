@@ -42,8 +42,8 @@ def main() -> None:
     print(f"device={device} | {torch.cuda.get_device_name(0) if device.type == 'cuda' else 'cpu'} | "
           f"{agent.n_parameters:,} parameters | buffer {agent.memory.capacity:,} transitions", flush=True)
 
-    import dqnlib.train as train_module
-    train_module.train(agent, env, dict(spec), seed=0, budget=budget, progress=False)
+    from dqnlib.train import train as train_fn  # `dqnlib.train` is shadowed by the function in __init__
+    train_fn(agent, env, dict(spec), seed=0, budget=budget, progress=False)
 
     if device.type == "cuda":
         torch.cuda.synchronize()
