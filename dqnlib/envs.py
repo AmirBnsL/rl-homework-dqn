@@ -50,7 +50,7 @@ ENV_SPECS = {
         metric_window=100,
         eval_episodes=20,
         eval_seed=100_000,
-        q_reference=100.0,
+        q_reference=None,
     ),
     "pong": dict(
         label="ALE/Pong-v5",

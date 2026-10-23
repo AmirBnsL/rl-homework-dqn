@@ -172,6 +172,7 @@ def setup_cell(env_name: str | None):
         import pandas as pd
         import torch
         import gymnasium
+        import matplotlib.pyplot as plt
         from IPython.display import display
 
         DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -181,7 +182,6 @@ def setup_cell(env_name: str | None):
         print(f"device            : {{DEVICE}}"
               + (f" ({{torch.cuda.get_device_name(0)}})" if DEVICE.type == "cuda" else ""))
 
-        seed_everything = set_seed  # defined by the library cell below
         pd.set_option("display.width", 160)
         pd.set_option("display.max_columns", 30)
     ''')
@@ -280,6 +280,8 @@ def sanity_cells(env_name: str, variants: tuple[str, ...]):
         env = make_env(ENV_NAME)
         state, _ = env.reset(seed=0)
         batch = np.repeat(np.asarray(state)[None], 8, axis=0)
+        if batch.dtype != np.uint8:  # the MLP expects float32; the CNN takes uint8 frames
+            batch = batch.astype(np.float32)
         batch = torch.as_tensor(batch, device=DEVICE)
         with torch.no_grad():
             q = agent0.q_net(batch)
