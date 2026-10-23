@@ -61,6 +61,19 @@ def ex1_figure(env_name: str, runs_dir: str) -> str | None:
     return path
 
 
+REPORT_COLUMNS = ["train_score", "greedy_mean", "greedy_min", "greedy_max", "bias"]
+
+
+def compact(table: pd.DataFrame) -> str:
+    """Keep the columns that fit in the report, with readable headers."""
+    columns = [c for c in REPORT_COLUMNS if c in table.columns]
+    frame = table[columns].round(1)
+    frame.columns = [{"train_score": "training score", "greedy_mean": "greedy",
+                      "greedy_min": "min seed", "greedy_max": "max seed",
+                      "bias": "bias"}[c] for c in columns]
+    return frame.to_markdown()
+
+
 def ex1_table(env_name: str, runs_dir: str) -> str | None:
     results = load_matrix(env_name, EX1_VARIANTS, SEEDS, runs_dir)
     if not results:
@@ -72,10 +85,14 @@ def ex1_table(env_name: str, runs_dir: str) -> str | None:
             c = compare(results["hard"], results[b])
             comparisons.append(dict(comparison=f"hard vs {b}", **c))
     lines = [f"## Exercise 1 — {ENV_SPECS[env_name]['label']}", "",
-             table.round(2).to_markdown(), ""]
+             compact(table), "",
+             "Training score = mean of the last episodes, greedy = 20 evaluation episodes "
+             "(ε = 0); min/max = band across the three seeds; bias = predicted Q minus the "
+             "empirical discounted return.", ""]
     if comparisons:
+        frame = pd.DataFrame(comparisons)[["comparison", "difference", "band", "significant"]]
         lines += ["### Is the gap larger than the min–max band across seeds?", "",
-                  pd.DataFrame(comparisons).round(2).to_markdown(), ""]
+                  frame.round(1).to_markdown(index=False), ""]
     path = os.path.join(TABLES, f"ex1_{env_name}.md")
     os.makedirs(TABLES, exist_ok=True)
     with open(path, "w") as handle:
@@ -137,9 +154,9 @@ def ex2_table(env_name: str, runs_dir: str) -> str | None:
                               bias=float(r["bias"]))
                          for v, runs in results.items() for r in runs])
     lines = [f"## Exercise 2 — {ENV_SPECS[env_name]['label']}", "",
-             table.round(2).to_markdown(), "", "### Overestimation bias", "",
-             bias.groupby("variant")[["q_pred", "mc_return", "bias"]].mean().round(2).to_markdown(),
-             ""]
+             compact(table), "", "### Overestimation bias", "",
+             bias.groupby("variant")[["q_pred", "mc_return", "bias"]].mean().round(1)
+             .to_markdown(), ""]
     path = os.path.join(TABLES, f"ex2_{env_name}.md")
     os.makedirs(TABLES, exist_ok=True)
     with open(path, "w") as handle:
@@ -178,15 +195,22 @@ def ex3_figure_and_table(runs_dir: str) -> list[str]:
                 version=version, agent=agent,
                 train_score=np.mean([np.mean(r["episode_returns"][-20:]) for r in runs]),
                 greedy=np.mean([np.mean(r["eval_returns"]) for r in runs]),
-                success=np.nanmean([np.nanmean(r["eval_success"]) for r in runs]),
+                success=np.nanmean([np.nanmean(r["eval_success"]) for r in runs
+                                 if np.isfinite(r["eval_success"]).any()]) if any(
+                    np.isfinite(r["eval_success"]).any() for r in runs) else np.nan,
                 length=np.mean([np.mean(r["eval_lengths"]) for r in runs]),
                 bfs_optimal=np.nanmean([np.nanmean(r["eval_optimal"]) for r in runs])))
     table = pd.DataFrame(rows)
     table["length_over_bfs"] = table["length"] / table["bfs_optimal"]
     path = os.path.join(TABLES, "ex3.md")
     os.makedirs(TABLES, exist_ok=True)
+    keep = ["version", "agent", "train_score", "greedy", "success", "length",
+            "bfs_optimal", "length_over_bfs"]
     with open(path, "w") as handle:
-        handle.write("## Exercise 3 — TreasureGrid\n\n" + table.round(2).to_markdown() + "\n")
+        handle.write("## Exercise 3 — TreasureGrid\n\n"
+                     + table[keep].round(2).to_markdown(index=False) + "\n\n"
+                     + "Success = fraction of evaluation episodes reaching the treasure; "
+                       "length / BFS = mean episode length divided by the optimal path length.\n")
     paths.append(path)
     return paths
 

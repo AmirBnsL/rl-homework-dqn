@@ -44,18 +44,24 @@ def plot_curves(ax, runs_by_label: dict, window: int = 20, x_key: str = "episode
     ax.legend(fontsize=8)
 
 
-def plot_q_curves(ax, runs_by_label: dict, reference: float | None = None, title: str = "") -> None:
+def plot_q_curves(ax, runs_by_label: dict, reference: float | None = None, title: str = "",
+                  smooth: float = 0.02) -> None:
+    """Predicted Q-values per gradient step, lightly smoothed (no-replay is extremely spiky)."""
     for label, runs in runs_by_label.items():
         strides = [int(run["q_stride"]) for run in runs]
         xs = [np.arange(len(run["q_means"])) * stride for run, stride in zip(runs, strides)]
         grid = _common_grid(xs)
-        aligned = np.stack([np.interp(grid, x, np.asarray(run["q_means"], dtype=np.float64))
-                            for x, run in zip(xs, runs)])
+        curves = []
+        for x, run in zip(xs, runs):
+            values = np.asarray(run["q_means"], dtype=np.float64)
+            window = max(1, int(len(values) * smooth))
+            curves.append(np.interp(grid, x, moving_average(values, window)))
+        aligned = np.stack(curves)
         ax.plot(grid, aligned.mean(axis=0), lw=1.8, label=label)
         ax.fill_between(grid, aligned.min(axis=0), aligned.max(axis=0), alpha=0.18)
     if reference is not None:
         ax.axhline(reference, ls="--", c="k", lw=1, label="1/(1-gamma)")
-    ax.set(xlabel="gradient step", ylabel="mean max_a Q(s, a)", title=title)
+    ax.set(xlabel="gradient step", ylabel="mean max_a Q(s, a), smoothed", title=title)
     ax.legend(fontsize=8)
 
 
@@ -84,7 +90,8 @@ def summary_table(runs_by_variant: dict, env_name: str) -> pd.DataFrame:
         train_scores = [float(np.mean(run["episode_returns"][-window:])) for run in runs]
         greedy = [float(np.mean(run["eval_returns"])) for run in runs]
         biases = [float(run["bias"]) for run in runs if "bias" in run]
-        successes = [float(np.nanmean(run["eval_success"])) for run in runs if "eval_success" in run]
+        successes = [float(np.nanmean(run["eval_success"])) for run in runs
+                     if "eval_success" in run and np.isfinite(run["eval_success"]).any()]
         rows.append(dict(
             variant=variant,
             train_score=np.mean(train_scores),
