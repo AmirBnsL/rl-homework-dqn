@@ -102,7 +102,7 @@ def test_reward_shaping_is_potential_based():
         and (before[0] + dr, before[1] + dc) != env._treasure)
     _, reward, terminated, _, _ = env.step(action)
     assert not terminated
-    expected = env.step_penalty + env.gamma_shaping * env._potential(env.agent) - previous_potential
+    expected = env.step_penalty + env._potential(env.agent) - previous_potential
     assert abs(reward - expected) < 1e-6
     assert env._potential(env._treasure) == 0.0
 

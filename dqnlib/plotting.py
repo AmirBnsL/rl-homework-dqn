@@ -107,7 +107,8 @@ def summary_table(runs_by_variant: dict, env_name: str) -> pd.DataFrame:
             minutes=float(np.mean([run["wall_time"] for run in runs]) / 60),
             seeds=len(runs),
         ))
-    return pd.DataFrame(rows).set_index("variant")
+    frame = pd.DataFrame(rows).set_index("variant")
+    return frame.dropna(axis=1, how="all")  # e.g. success_rate is meaningless outside TreasureGrid
 
 
 def compare(runs_a, runs_b, key: str = "eval_returns") -> dict:

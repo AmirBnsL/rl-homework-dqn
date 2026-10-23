@@ -165,16 +165,21 @@ Three registered versions change the three things the assignment asks for:
 
 | Version | State representation | Reward | Dynamics |
 |---|---|---|---|
-| `TreasureGrid-v0` | 4 one-hot planes of the whole grid, 144 floats | sparse: +1 treasure, −1 trap, −0.01 per step | 2 static traps |
-| `TreasureGrid-v1` | 7 coordinates (agent, treasure, traps, distance) | potential-based shaping `F = γΦ(s′) − Φ(s)`, `Φ = −dist/N` | 2 static traps |
-| `TreasureGrid-v2` | egocentric `5 x 5` patch, 5 channels, 125 floats | sparse, no step penalty | traps move after every action, treasure random at reset |
+| `TreasureGrid-v0` | 4 one-hot planes of the whole grid, 144 floats | sparse: +1 treasure, −1 trap | 2 static traps |
+| `TreasureGrid-v1` | 9 coordinates (agent, treasure, traps, distance) | potential-based shaping `F = Φ(s′) − Φ(s)`, `Φ = −dist/N` | 2 static traps |
+| `TreasureGrid-v2` | egocentric `5 x 5` patch, 5 channels, 125 floats | sparse: +1 treasure, −1 trap | traps move after every action, treasure random at reset |
 
 {{baselines}}
 
-Three agents (`hard`, `double`, `dueling`) are trained on every version with the CartPole
-hyperparameters of Part 0 (MLP 64, Adam 5e-4, buffer 100 000, batch 64, learn every step, target
-update every 100 gradient steps, ε 1.0 → 0.05 over 10 000 steps, 400 episodes). The agents run
-without any modification: only `observation_space` and `action_space` differ from CartPole.
+Three agents (`hard`, `double`, `dueling`) are trained on every version, starting from the CartPole
+column of Part 0 (MLP 64, Adam 5e-4, buffer 100 000, batch 64, learn every step, target update every
+100 gradient steps). Two settings are changed and then kept fixed for all 27 runs: `γ = 0.90`
+instead of 0.99 — the episode lasts 144 steps but the optimal path is about 6, and with 0.99 the
+Q-values saturate and the greedy policy collapses to standing still — and `ε_end = 0.10` instead of
+0.05, because the reward is sparse. There is no per-step penalty: over a 144-step horizon it would
+make dying on a trap cheaper than finishing the episode. The budget is 800 episodes. The agents
+themselves run without any modification: only `observation_space` and `action_space` differ from
+CartPole.
 
 {{figure:ex3_curves:TreasureGrid — learning curves of the three agents on the three versions (3 seeds).}}
 

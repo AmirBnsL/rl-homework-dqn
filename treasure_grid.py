@@ -103,13 +103,9 @@ class TreasureGridEnv(gym.Env):
                            if (r, c) not in self.walls]
 
         # reward function per version
-        if variant == "v1":
-            self.step_penalty = -0.01 if step_penalty is None else float(step_penalty)
-            self.gamma_shaping = 0.99
-        elif variant == "v2":
-            self.step_penalty = 0.0 if step_penalty is None else float(step_penalty)
-        else:
-            self.step_penalty = -0.01 if step_penalty is None else float(step_penalty)
+        # no per-step penalty by default: a step penalty over a 144-step horizon would make
+        # dying early cheaper than finishing the episode, which is a perverse incentive
+        self.step_penalty = 0.0 if step_penalty is None else float(step_penalty)
         self.treasure_reward = 1.0
         self.trap_reward = -1.0
         self._treasure = self._fixed_treasure()
@@ -256,8 +252,12 @@ class TreasureGridEnv(gym.Env):
             reward, terminated = self.trap_reward, True
         else:
             reward = self.step_penalty
-            if self.variant == "v1":  # potential-based shaping: F(s, s') = gamma*phi(s') - phi(s)
-                reward += self.gamma_shaping * self._potential(self.agent) - previous_potential
+            if self.variant == "v1":
+                # potential-based shaping, F(s, s') = phi(s') - phi(s): the sum along a trajectory
+                # telescopes to phi(s_T) - phi(s_0), so it leaves the optimal policy unchanged
+                # (with gamma*phi(s') - phi(s) the *discount of the agent* would have to match,
+                #  and a mismatch rewards standing still)
+                reward += self._potential(self.agent) - previous_potential
 
         if self.variant == "v2" and not terminated:
             self._move_traps()

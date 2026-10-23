@@ -90,12 +90,23 @@ def build_agent(env, env_name: str, variant: str, seed: int, device=None,
     return agent
 
 
+def is_complete(npz_path: str) -> bool:
+    """A checkpoint written every N steps is a valid artifact but the run is not finished yet."""
+    if not os.path.exists(npz_path):
+        return False
+    try:
+        with np.load(npz_path, allow_pickle=False) as data:
+            return not bool(data["partial"]) if "partial" in data else True
+    except Exception:
+        return False
+
+
 def run_one(env_name: str, variant: str, seed: int, budget=None, out_dir: str = "runs",
             device=None, verbose: bool = True, ckpt_every_steps: int | None = None,
             force: bool = False, gamma_eval: float = 0.99) -> dict:
     """Train one (environment, variant, seed) triplet, evaluate it greedily and save the artifacts."""
     npz_path, pth_path = run_paths(env_name, variant, seed, out_dir)
-    if os.path.exists(npz_path) and not force:
+    if is_complete(npz_path) and not force:
         if verbose:
             print(f"[skip] {env_name}/{variant} seed {seed}: {npz_path} already exists")
         return load_run(env_name, variant, seed, out_dir)
@@ -219,13 +230,13 @@ def load_run(env_name: str, variant: str, seed: int, out_dir: str = "runs") -> d
 
 
 def load_matrix(env_name: str, variants, seeds=SEEDS, out_dir: str = "runs") -> dict:
-    """{variant: [per-seed run dicts]} for the variants that have been run already."""
+    """{variant: [per-seed run dicts]}; runs still in progress (partial checkpoints) are skipped."""
     out = {}
     for variant in variants:
         runs = []
         for seed in seeds:
             npz_path, _ = run_paths(env_name, variant, seed, out_dir)
-            if os.path.exists(npz_path):
+            if is_complete(npz_path):
                 runs.append(load_run(env_name, variant, seed, out_dir))
         if runs:
             out[variant] = runs

@@ -651,12 +651,13 @@ def ex3_notebook():
 
         | Version | State representation | Reward | Dynamics |
         |---|---|---|---|
-        | `TreasureGrid-v0` | 4 one-hot planes of the whole grid (agent, treasure, traps, walls), 144 floats | sparse: +1 treasure, −1 trap, −0.01 per step | two static traps |
-        | `TreasureGrid-v1` | 7 coordinates: agent, treasure, each trap, normalised distance | potential-based shaping `F = γΦ(s′) − Φ(s)` with `Φ(s) = −dist(s, treasure)/N`, plus −0.01 per step | two static traps |
-        | `TreasureGrid-v2` | egocentric 5 × 5 patch, 5 channels (agent, treasure, trap, wall, outside), 125 floats | sparse: +1 treasure, −1 trap, no step penalty | two traps that move by one random cell after every action, treasure position random at each reset |
+        | `TreasureGrid-v0` | 4 one-hot planes of the whole grid (agent, treasure, traps, walls), 144 floats | sparse: +1 treasure, −1 trap, no per-step penalty | two static traps |
+        | `TreasureGrid-v1` | 9 coordinates: agent, treasure, the two traps, normalised distance | potential-based shaping `F = Φ(s′) − Φ(s)` with `Φ(s) = −dist(s, treasure)/N` | two static traps |
+        | `TreasureGrid-v2` | egocentric 5 × 5 patch, 5 channels (agent, treasure, trap, wall, outside), 125 floats | sparse: +1 treasure, −1 trap | two traps that move by one random cell after every action, treasure position random at each reset |
 
-        The shaping of `v1` is potential-based, so the optimal policy is unchanged: only the
-        difficulty of *learning* it changes.
+        The shaping of `v1` is potential-based and gamma-free ($F = \\Phi(s') - \\Phi(s)$), so its
+        sum along a trajectory telescopes to $\\Phi(s_T) - \\Phi(s_0)$ and the optimal policy is
+        unchanged for any discount: only the difficulty of *learning* it changes.
         """),
         code('''
         # @title 4. Gymnasium API check + observation spaces
@@ -698,12 +699,21 @@ def ex3_notebook():
         display(pd.DataFrame(rows).round(2))
         '''),
         md("""
-        ## 2. Experimental protocol
+        ## 2. Experimental protocol and hyperparameter choices
 
-        Three versions × three agents (`hard`, `double`, `dueling`) × three seeds = 27 runs, with the
-        CartPole hyperparameters of Part 0 (MLP 64, Adam 5e-4, buffer 100 000, batch 64, learn every
-        step, target update every 100 gradient steps, ε 1.0 → 0.05 over 10 000 steps) and a budget of
-        400 episodes. The greedy evaluation uses 20 episodes with seeds 100 000 + i.
+        Three versions × three agents (`hard`, `double`, `dueling`) × three seeds = 27 runs. We start
+        from the CartPole column of Part 0 (MLP 64, Adam 5e-4, buffer 100 000, batch 64, learn every
+        step, target update every 100 gradient steps) and change **two** settings, for reasons that
+        are specific to this world, then keep them fixed for every version and agent:
+
+        | Setting | Part 0 (CartPole) | Here | Why |
+        |---|---|---|---|
+        | `gamma` | 0.99 | **0.90** | the episode lasts 144 steps but the optimal path is about 6; with 0.99 the value scale is 100x the reward, the Q-values saturate and the greedy policy collapses to standing still |
+        | `eps_end` | 0.05 | **0.10** | the reward is sparse (+1/−1): a little exploration has to survive, otherwise the agent never sees the treasure again |
+        | step penalty | none | **none** | with a 144-step horizon, a per-step penalty makes dying on a trap (−1) cheaper than finishing the episode (−1.44), a perverse incentive |
+        | budget | 300 episodes | **800 episodes** | 800 x ~50 steps is what makes the sparse reward propagate; it is the same for the 27 runs |
+
+        The greedy evaluation uses 20 episodes with seeds 100 000 + i.
         """),
         code('''
         # @title 7. Train 3 versions x 3 agents x 3 seeds
