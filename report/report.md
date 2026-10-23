@@ -268,9 +268,9 @@ Baselines over 50 episodes per version (success rate and episode length, compare
 
 | version   |   random_success |   random_length |   bfs_success |   bfs_length |   bfs_optimal |
 |:----------|-----------------:|----------------:|--------------:|-------------:|--------------:|
-| `v0`      |             0.16 |           41.64 |           1   |         6.18 |          6.18 |
-| `v1`      |             0.22 |           48.14 |           1   |         6.18 |          6.18 |
-| `v2`      |             0.1  |           13.16 |           0.9 |         6.4  |          6.18 |
+| `v0`      |             0.34 |           31.74 |           1   |         6.18 |          6.18 |
+| `v1`      |             0.24 |           40.6  |           1   |         6.18 |          6.18 |
+| `v2`      |             0.12 |           15.78 |           0.9 |         6.4  |          6.18 |
 
 Three agents (`hard`, `double`, `dueling`) are trained on every version, starting from the CartPole
 column of Part 0 (MLP 64, Adam 5e-4, buffer 100 000, batch 64, learn every step, target update every
@@ -327,7 +327,7 @@ the greedy policy is a local, not a global, optimum.
 | ALE/Pong-v5     |      2 |          30.42 |         300000   |          1.01 |
 | TreasureGrid-v0 |      9 |           0.55 |          25175.3 |          0.08 |
 | TreasureGrid-v1 |      9 |           0.48 |          24704.7 |          0.07 |
-| TreasureGrid-v2 |      9 |           0.23 |          11515.2 |          0.03 |
+| TreasureGrid-v2 |      9 |           0.24 |          11515.2 |          0.04 |
 
 Total training time in this study: 3.6 core-hours.
 

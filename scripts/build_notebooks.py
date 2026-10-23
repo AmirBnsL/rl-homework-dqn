@@ -357,6 +357,28 @@ def sanity_cells(env_name: str, variants: tuple[str, ...]):
     ]
 
 
+PONG_BUDGET_STEPS = 300_000
+
+
+def pong_budget_expr(env_name: str) -> str:
+    return f'("steps", {PONG_BUDGET_STEPS})' if env_name == "pong" else "None"
+
+
+def pong_budget_note(env_name: str):
+    if env_name != "pong":
+        return md("")
+    return md(f"""
+    **Budget.** The reference budget of Part 0 is 10^6 environment steps per run. A calibration of the
+    exact training loop on this GPU (`scripts/calibrate.py`) measures about 154 environment steps per
+    second, i.e. 1 h 47 per run and **38 GPU-hours** for the 21 Pong runs. We therefore use the same
+    reduced budget of **{PONG_BUDGET_STEPS:,} steps for every variant and every seed**, as the
+    assignment allows, and say so wherever the Pong curves are read. The epsilon decay is scaled from
+    10^6 to {PONG_BUDGET_STEPS:,} steps (`agent.eps`), so that epsilon still reaches its final value
+    at the end of training instead of stalling at 0.7; the calibration and the resulting table are in
+    the report, §6.
+    """)
+
+
 def training_cell(variants: tuple[str, ...], env_name: str, budget_expr: str = "None"):
     return code(f'''
         # @title 8. Train {len(variants)} variants x 3 seeds
@@ -542,7 +564,9 @@ def ex1_notebook(env_name: str):
     cells += env_cells(env_name, ("hard", "soft", "no_replay", "no_target"), pairs)
     cells += sanity_cells(env_name, ("hard", "soft", "no_replay", "no_target"))
     cells += [md("## 2. The four variants\n" + VARIANTS_MD["ex1"])]
-    cells += [training_cell(("hard", "soft", "no_replay", "no_target"), env_name)]
+    cells += [pong_budget_note(env_name) if env_name == "pong" else md("")]
+    cells += [training_cell(("hard", "soft", "no_replay", "no_target"), env_name,
+                            budget_expr=pong_budget_expr(env_name))]
     cells += [md("""
         ## 3. Learning curves
 
@@ -577,7 +601,9 @@ def ex2_notebook(env_name: str):
     cells += env_cells(env_name, ("hard", "double", "dueling", "dueling_double"), pairs)
     cells += sanity_cells(env_name, ("hard", "double", "dueling", "dueling_double"))
     cells += [md("## 2. The four agents\n" + VARIANTS_MD["ex2"] + BIAS_MD)]
-    cells += [training_cell(("hard", "double", "dueling", "dueling_double"), env_name)]
+    cells += [pong_budget_note(env_name) if env_name == "pong" else md("")]
+    cells += [training_cell(("hard", "double", "dueling", "dueling_double"), env_name,
+                            budget_expr=pong_budget_expr(env_name))]
     cells += [md("## 3. Learning curves")]
     cells += [curves_cell(pairs, env_name, "Double / Dueling DQN")]
     cells += [md("## 4. Predicted Q-values during training")]
@@ -735,11 +761,13 @@ def ex3_notebook():
         """),
         code('''
         # @title 8. Learning curves
-        fig, axes = plt.subplots(1, 3, figsize=(16, 4), sharey=True)
+        fig, axes = plt.subplots(1, 3, figsize=(16, 4))  # reward scales differ between versions
         for ax, (version, runs) in zip(axes, ALL_RESULTS.items()):
             plot_curves(ax, {variant_label(v): r for v, r in runs.items()},
                         window=20, x_key="episode", title=f"TreasureGrid-{version}")
         axes[0].set_ylabel("episode return")
+        for extra in axes[1:]:
+            extra.set_ylabel("")
         fig.suptitle("TreasureGrid — DQN vs Double DQN vs Dueling DQN (3 seeds)", y=1.02)
         plt.tight_layout(); plt.show()
         '''),
@@ -813,6 +841,7 @@ def ex3_notebook():
 
 
 def write_notebook(cells, filename: str) -> str:
+    cells = [cell for cell in cells if "".join(cell["source"]).strip()]  # drop the empty spacers
     notebook = nbf.v4.new_notebook(cells=cells)
     notebook.metadata = {
         "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},

@@ -183,7 +183,7 @@ def ex3_figure_and_table(runs_dir: str) -> list[str]:
     if not collected:
         return paths
 
-    fig, axes = plt.subplots(1, len(collected), figsize=(5.4 * len(collected), 4), sharey=True)
+    fig, axes = plt.subplots(1, len(collected), figsize=(5.4 * len(collected), 4))
     axes = np.atleast_1d(axes)
     for ax, (version, (env_key, results)) in zip(axes, collected.items()):
         plot_curves(ax, {variant_label(v): r for v, r in results.items()}, window=20,

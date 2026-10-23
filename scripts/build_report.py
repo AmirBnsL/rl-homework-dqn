@@ -105,8 +105,8 @@ def glance() -> str:
         if env_name.startswith("treasure_"):
             continue
         results = load_matrix(env_name, tuple(dict.fromkeys(EX1_VARIANTS + EX2_VARIANTS)), SEEDS, RUNS)
-        if not results:
-            continue
+        if not results or any(len(runs) < len(SEEDS) for runs in results.values()):
+            continue  # still training: a two-seed glance would be misleading
         table = summary_table(results, env_name)
         best = table["greedy_mean"].idxmax()
         solved = [v for v in table.index if table.loc[v, "solved"]]
