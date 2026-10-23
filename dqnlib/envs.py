@@ -148,7 +148,10 @@ def make_env(name: str, render_mode: str | None = None) -> gym.Env:
         env = gym.wrappers.FrameStackObservation(env, stack_size=4)
         return env
     if name.startswith("treasure_"):
-        import treasure_grid  # noqa: F401  (registers TreasureGrid-v0/v1/v2)
+        try:
+            import treasure_grid  # noqa: F401  (registers TreasureGrid-v0/v1/v2)
+        except ImportError:
+            pass  # in the notebooks the environment is already defined in this namespace
         suffix = {"treasure_v0": "TreasureGrid-v0", "treasure_v1": "TreasureGrid-v1",
                   "treasure_v2": "TreasureGrid-v2"}[name]
         return gym.make(suffix, render_mode=render_mode)

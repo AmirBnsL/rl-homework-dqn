@@ -8,6 +8,7 @@ opencv-python-headless>=4.10
 imageio>=2.34
 imageio-ffmpeg>=0.5
 nbformat>=5.10
+tabulate>=0.9
 nbclient>=0.10
 nbconvert>=7.16
 pytest>=8.0

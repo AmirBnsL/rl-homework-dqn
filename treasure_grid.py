@@ -352,6 +352,7 @@ def _action_towards(cell, target) -> int:
 import warnings
 
 warnings.filterwarnings("ignore", message=".*is out of date.*")
+warnings.filterwarnings("ignore", message=".*Overriding environment.*")
 
 gym.register(id="TreasureGrid-v0", entry_point="treasure_grid:TreasureGridEnv",
              kwargs={"variant": "v0", "n_traps": 2, "treasure_mode": "fixed"})
