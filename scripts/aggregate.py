@@ -37,7 +37,9 @@ def ex1_figure(env_name: str, runs_dir: str) -> str | None:
     x_key = "steps" if env_name == "pong" else "episode"
     pairs = [("hard", "soft"), ("hard", "no_replay"), ("hard", "no_target")]
 
-    fig, axes = plt.subplots(2, 3, figsize=(16, 8))
+    fig, axes = plt.subplots(2, 3, figsize=(16, 8))  # rows are scaled independently
+    axes[0][1].sharey(axes[0][0])
+    axes[0][2].sharey(axes[0][0])
     for ax, (a, b) in zip(axes[0], pairs):
         curves = {variant_label(a): results[a]}
         if b in results:
@@ -45,6 +47,8 @@ def ex1_figure(env_name: str, runs_dir: str) -> str | None:
         plot_curves(ax, curves, window=20, x_key=x_key, threshold=spec["target_score"],
                     title=f"{b} vs reference")
         ax.set_ylabel("episode return")
+    for ax in axes[0][1:]:
+        ax.set_ylabel("")
     for ax, (a, b) in zip(axes[1], pairs):
         curves = {variant_label(a): results[a]}
         if b in results:
@@ -53,6 +57,8 @@ def ex1_figure(env_name: str, runs_dir: str) -> str | None:
         if spec["q_reference"]:
             ax.axhline(spec["q_reference"], ls="--", c="k", lw=1, label="1/(1-gamma)")
             ax.legend(fontsize=8)
+    for ax in axes[1][1:]:
+        ax.set_ylabel("")
     fig.suptitle(f"{spec['label']} — ablation of DQN (mean of 3 seeds, band = min–max)", y=1.0)
     fig.tight_layout()
     path = os.path.join(FIGURES, f"ex1_{env_name}.png")

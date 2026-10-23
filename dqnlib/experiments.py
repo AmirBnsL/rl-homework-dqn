@@ -23,7 +23,7 @@ from dqnlib.envs import ENV_SPECS, make_env, make_eval_env
 from dqnlib.train import evaluate, train
 from dqnlib.utils import atomic_save_json, atomic_savez, format_seconds
 
-VARIANTS = {
+VARIANT_SWITCHES = {
     "hard": dict(target_update="hard"),
     "soft": dict(target_update="soft", tau=0.01),
     "no_replay": dict(use_replay=False),
@@ -55,9 +55,9 @@ def variant_label(variant: str) -> str:
 def agent_kwargs(env_name: str, variant: str) -> dict:
     spec = ENV_SPECS[env_name]
     kwargs = dict(spec["agent"])
-    if variant not in VARIANTS:
+    if variant not in VARIANT_SWITCHES:
         raise ValueError(f"unknown variant {variant!r}")
-    kwargs.update(VARIANTS[variant])
+    kwargs.update(VARIANT_SWITCHES[variant])
     if variant == "no_replay":
         # the memory must hold exactly one minibatch of consecutive transitions
         kwargs["buffer_size"] = kwargs["batch_size"]

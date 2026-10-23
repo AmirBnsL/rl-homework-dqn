@@ -316,7 +316,7 @@ def sanity_cells(env_name: str, variants: tuple[str, ...]):
         _, actions, _, _, _ = recent.sample(agent0.batch_size)
         print(f"no replay: the last {agent0.batch_size} transitions, in order -> "
               f"actions {actions.tolist()[:10]} ...")
-        assert len(uniform) == uniform.capacity and len(recent) == agent0.batch_size
+        assert len(uniform) == 200 and len(recent) == agent0.batch_size
         '''),
         code('''
         # @title 6. Target formulas of the assignment, checked numerically
@@ -392,18 +392,20 @@ def curves_cell(pairs, env_name: str, title: str):
                         threshold=spec["target_score"],
                         title=f"{{b}} vs reference" if b != "hard" else "reference")
         axes[0].set_ylabel("episode return")
+        for extra in axes[1:]:
+            extra.set_ylabel("")
         fig.suptitle("{title}: " + spec["label"] + " (20-episode moving average)", y=1.02)
         plt.tight_layout(); plt.show()
     ''')
 
 
 def q_cell(pairs, env_name: str):
-    reference = _spec(env_name)["q_reference"]
-    ref_txt = (f'ax.axhline({reference}, ls="--", c="k", lw=1, label="1/(1-gamma)")'
-               if reference else "pass")
+    ref_txt = ('if spec["q_reference"] is not None:\n'
+               '                ax.axhline(spec["q_reference"], ls="--", c="k", lw=1,\n'
+               '                           label="1/(1-gamma)")')
     return code(f'''
         # @title 10. Predicted Q-values during training
-        fig, axes = plt.subplots(1, len(pairs), figsize=(5.2 * len(pairs), 4), sharey=True)
+        fig, axes = plt.subplots(1, len(pairs), figsize=(5.2 * len(pairs), 4))
         axes = np.atleast_1d(axes)
         for ax, (a, b) in zip(axes, pairs):
             runs = {{}}
@@ -412,7 +414,9 @@ def q_cell(pairs, env_name: str):
                     runs[variant_label(name)] = RESULTS[name]
             plot_q_curves(ax, runs, title=f"{{b}} vs reference")
             {ref_txt}
-        axes[0].set_ylabel("mean of Q(s, a; theta) over the minibatch")
+        axes[0].set_ylabel("mean max_a Q(s, a), smoothed")
+        for extra in axes[1:]:
+            extra.set_ylabel("")
         fig.suptitle(spec["label"] + " — predicted Q-values (mean of 3 seeds, band = min–max)", y=1.02)
         plt.tight_layout(); plt.show()
     ''')

@@ -1,0 +1,31 @@
+{
+  "agent": null,
+  "bias": null,
+  "budget": 800,
+  "budget_unit": "episodes",
+  "created": "2026-10-23T17:08:17",
+  "device": null,
+  "env": "lunarlander",
+  "env_id": "LunarLander-v3",
+  "env_steps": 25467,
+  "eps": {
+    "eps_decay_steps": 25000,
+    "eps_end": 0.05,
+    "eps_start": 1.0
+  },
+  "greedy_score": null,
+  "greedy_std": null,
+  "label": "LunarLander-v3",
+  "metric_window": 100,
+  "n_episodes": 134,
+  "python": "3.13.16",
+  "seed": 2,
+  "solved": null,
+  "success_rate": null,
+  "target_score": 200.0,
+  "training_score": -117.0374427044854,
+  "updates": 6351,
+  "variant": "hard",
+  "variant_label": "DQN hard update (reference)",
+  "wall_time": 15.279334545135498
+}

@@ -25,9 +25,9 @@ def get_device(prefer_cuda: bool = True) -> torch.device:
 
 
 def epsilon_at(step: int, eps_start: float = 1.0, eps_end: float = 0.05,
-               decay_steps: int = 10_000) -> float:
-    """Linear epsilon schedule: eps_start at step 0, eps_end after `decay_steps`, then constant."""
-    fraction = min(1.0, step / decay_steps)
+               eps_decay_steps: int = 10_000) -> float:
+    """Linear epsilon schedule: eps_start at step 0, eps_end after the decay, then constant."""
+    fraction = min(1.0, step / eps_decay_steps)
     return float(eps_start + fraction * (eps_end - eps_start))
 
 

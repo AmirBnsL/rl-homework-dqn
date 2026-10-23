@@ -67,6 +67,26 @@ def verdict_bullets(env_name: str, suite: str) -> str:
     return "\n".join(lines)
 
 
+def glance() -> str:
+    """One bullet per environment: best agent of each exercise, greedy score, solved or not."""
+    lines = []
+    for env_name, spec in ENV_SPECS.items():
+        if env_name.startswith("treasure_"):
+            continue
+        results = load_matrix(env_name, tuple(dict.fromkeys(EX1_VARIANTS + EX2_VARIANTS)), SEEDS, RUNS)
+        if not results:
+            continue
+        table = summary_table(results, env_name)
+        best = table["greedy_mean"].idxmax()
+        solved = [v for v in table.index if table.loc[v, "solved"]]
+        lines.append(
+            f"* **{spec['label']}** — best agent `{best}` with a greedy score of "
+            f"{table.loc[best, 'greedy_mean']:.1f} (target {spec['target_score']:g}); "
+            + (f"solvable variants: {', '.join('`' + v + '`' for v in solved)}."
+               if solved else "no variant reaches the target on the mean of three seeds."))
+    return "\n".join(lines) if lines else "_(no run available yet)_"
+
+
 def baselines_table() -> str:
     import treasure_grid  # registers the environments
 
@@ -179,6 +199,7 @@ def build(author: str, date: str) -> str:
     text = re.sub(r"\{\{verdicts:([^:}]+):([^}]+)\}\}",
                   lambda m: verdict_bullets(m.group(1).strip(), m.group(2).strip()), text)
     text = text.replace("{{baselines}}", baselines_table())
+    text = text.replace("{{glance}}", glance())
     text = text.replace("{{compute}}", compute_table())
 
     text = latex_safe(text)

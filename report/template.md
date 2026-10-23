@@ -29,6 +29,10 @@ All artifacts (curves, metrics, networks) come from one command per run, and eve
 archive re-plots them from the saved `.npz` files, so the numbers below are reproducible without
 re-training.
 
+**Results at a glance.**
+
+{{glance}}
+
 # 2. Part 0 — the three environments
 
 | | CartPole-v1 | LunarLander-v3 | ALE/Pong-v5 |

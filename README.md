@@ -76,6 +76,21 @@ Every run stores: episode returns/lengths, loss and mean Q(s, a) per gradient st
 env steps, gradient steps, wall time, the 20 greedy evaluation episodes, the Q-value bias, and the
 full agent configuration.
 
+## Running on Colab
+
+Colab recycles sessions without warning, so every run is resumable and the artifacts are pulled
+back periodically:
+
+```bash
+colab new -s t4 --gpu T4                      # allocate the machine
+colab exec -s t4 -f /tmp/setup.py             # clone, uv venv --system-site-packages, pip install -r
+scripts/sync_from_colab.sh t4 600 &           # pull runs/ every 10 minutes, in the background
+python scripts/run_experiment.py --env pong --suite all --budget steps:300000 --ckpt-every 50000
+```
+
+`run_experiment.py` skips the runs whose `.npz` already exists, so after a disconnection the same
+command continues where it stopped.
+
 ## Protocol
 
 * seeds 0, 1, 2 for every variant; only one setting changes at a time;

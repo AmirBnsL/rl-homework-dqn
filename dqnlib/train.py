@@ -52,9 +52,7 @@ def train(agent, env, spec: dict, seed: int = 0, budget=None, progress: bool = F
     Colab session only loses the current segment.
     """
     unit, amount = budget if budget is not None else spec["budget"]
-    eps_cfg = spec["eps"]
-    eps_kwargs = dict(eps_start=eps_cfg["eps_start"], eps_end=eps_cfg["eps_end"],
-                      decay_steps=eps_cfg["eps_decay_steps"])
+    eps_kwargs = dict(spec["eps"])
     window = spec["metric_window"]
 
     result = TrainResult()

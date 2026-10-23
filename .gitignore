@@ -6,6 +6,7 @@ __pycache__/
 
 # run artifacts: keep metrics, drop the (large) network weights except the delivered ones
 runs/**/*.pth
+deliverables/*.pth
 runs/**/*.tmp.npz
 *.log
 
