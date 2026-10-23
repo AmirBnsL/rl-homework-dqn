@@ -218,7 +218,7 @@ def _spec(env_name: str) -> dict:
     return namespace["ENV_SPECS"][env_name]
 
 
-def env_cells(env_name: str, variants, pairs):
+def env_cells(env_name: str, variants, pairs, budget_expr: str = "None"):
     spec = _spec(env_name)
     x_key = "steps" if env_name == "pong" else "episode"
     return [
@@ -264,6 +264,8 @@ def env_cells(env_name: str, variants, pairs):
         WINDOW = 20         # moving average used in every curve
         VARIANTS = {variants!r}
         PAIRS = {pairs!r}
+        RUN_MODE = "auto"   # "auto": reuse runs/ and train only what is missing | "train": redo everything
+        BUDGET = {budget_expr}   # None means the reference budget of Part 0
     '''),
     ]
 
@@ -348,15 +350,18 @@ def sanity_cells(env_name: str, variants: tuple[str, ...]):
         '''),
         code('''
         # @title 7. Exploration schedule
-        steps = np.linspace(0, spec["eps"]["eps_decay_steps"] * 1.15, 200)
-        eps = [epsilon_at(int(s), **spec["eps"]) for s in steps]
+        eps_cfg = dict(spec["eps"])
+        if BUDGET is not None and BUDGET[0] == "steps":  # run_one scales the decay to the budget
+            eps_cfg["eps_decay_steps"] = min(eps_cfg["eps_decay_steps"], BUDGET[1])
+        steps = np.linspace(0, eps_cfg["eps_decay_steps"] * 1.15, 200)
+        eps = [epsilon_at(int(s), **eps_cfg) for s in steps]
         plt.figure(figsize=(6, 2.6))
         plt.plot(steps, eps)
         plt.xlabel("environment steps"); plt.ylabel("epsilon")
         plt.title("linear epsilon schedule")
         plt.tight_layout(); plt.show()
         print(f"epsilon: {eps[0]:.2f} at step 0 -> {eps[-1]:.2f} after "
-              f"{spec['eps']['eps_decay_steps']:,} steps")
+              f"{eps_cfg['eps_decay_steps']:,} steps")
         '''),
     ]
 
@@ -386,9 +391,6 @@ def pong_budget_note(env_name: str):
 def training_cell(variants: tuple[str, ...], env_name: str, budget_expr: str = "None"):
     return code(f'''
         # @title 8. Train {len(variants)} variants x 3 seeds
-        RUN_MODE = "auto"    # "auto": reuse runs/ and train only what is missing | "train": redo everything
-        BUDGET = {budget_expr}  # None means the reference budget of Part 0
-
         RESULTS = run_matrix(ENV_NAME, VARIANTS, seeds=SEEDS, budget=BUDGET, out_dir="runs",
                              device=DEVICE, verbose=True, force=(RUN_MODE == "train"))
 
@@ -565,7 +567,8 @@ def ex1_notebook(env_name: str):
                         "variant, a no-replay variant and a no-target-network variant, and compare their "
                         "learning curves and predicted Q-values.")
     cells += [setup_cell(env_name), code(library_source(), "3. Library (inlined)")]
-    cells += env_cells(env_name, ("hard", "soft", "no_replay", "no_target"), pairs)
+    cells += env_cells(env_name, ("hard", "soft", "no_replay", "no_target"), pairs,
+                       pong_budget_expr(env_name))
     cells += sanity_cells(env_name, ("hard", "soft", "no_replay", "no_target"))
     cells += [md("## 2. The four variants\n" + VARIANTS_MD["ex1"])]
     cells += [pong_budget_note(env_name) if env_name == "pong" else md("")]
@@ -602,7 +605,8 @@ def ex2_notebook(env_name: str):
                         "advantage of each action. Four agents share everything except the target and the "
                         "head.")
     cells += [setup_cell(env_name), code(library_source(), "3. Library (inlined)")]
-    cells += env_cells(env_name, ("hard", "double", "dueling", "dueling_double"), pairs)
+    cells += env_cells(env_name, ("hard", "double", "dueling", "dueling_double"), pairs,
+                       pong_budget_expr(env_name))
     cells += sanity_cells(env_name, ("hard", "double", "dueling", "dueling_double"))
     cells += [md("## 2. The four agents\n" + VARIANTS_MD["ex2"] + BIAS_MD)]
     cells += [pong_budget_note(env_name) if env_name == "pong" else md("")]
@@ -627,14 +631,18 @@ def ex2_notebook(env_name: str):
                 rows.append(dict(variant=variant, seed=run["seed"],
                                  q_pred=float(np.mean(run["eval_q_pred"])),
                                  mc_return=float(np.mean(run["eval_mc_return"])),
-                                 bias=float(run["bias"])))
+                                 bias=float(run["bias"]),
+                                 truncated=float(np.mean(np.asarray(run["eval_lengths"])
+                                                         >= spec["max_episode_steps"]))
+                                 if spec["max_episode_steps"] else np.nan))
         bias = pd.DataFrame(rows)
         display(bias.round(2))
         aggregated = bias.groupby("variant").agg(q_pred=("q_pred", "mean"),
                                                  mc_return=("mc_return", "mean"),
                                                  bias=("bias", "mean"),
                                                  bias_min=("bias", "min"),
-                                                 bias_max=("bias", "max"))
+                                                 bias_max=("bias", "max"),
+                                                 truncated=("truncated", "mean"))
         display(aggregated.round(2))
         '''),
         code('''

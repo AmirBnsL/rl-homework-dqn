@@ -173,13 +173,17 @@ def ex2_table(env_name: str, runs_dir: str) -> str | None:
     if not results or any(len(runs) < len(SEEDS) for runs in results.values()):
         return None
     table = summary_table(results, env_name)
-    bias = pd.DataFrame([dict(variant=v, seed=r["seed"], q_pred=float(np.mean(r["eval_q_pred"])),
+    limit = ENV_SPECS[env_name]["max_episode_steps"]
+    bias = pd.DataFrame([dict(variant=v, seed=r["seed"],
+                              q_pred=float(np.mean(r["eval_q_pred"])),
                               mc_return=float(np.mean(r["eval_mc_return"])),
-                              bias=float(r["bias"]))
+                              bias=float(r["bias"]),
+                              truncated=float(np.mean(np.asarray(r["eval_lengths"]) >= limit))
+                              if limit else np.nan)
                          for v, runs in results.items() for r in runs])
     lines = [f"## Exercise 2 — {ENV_SPECS[env_name]['label']}", "",
              compact(table), "", "### Overestimation bias", "",
-             bias.groupby("variant")[["q_pred", "mc_return", "bias"]].mean()
+             bias.groupby("variant")[["q_pred", "mc_return", "bias", "truncated"]].mean()
              .reindex([v for v in EX2_VARIANTS if v in bias["variant"].unique()])
              .round(1).to_markdown(), ""]
     path = os.path.join(TABLES, f"ex2_{env_name}.md")

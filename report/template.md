@@ -143,6 +143,13 @@ evaluation episodes:
 
 $$\text{bias} = \overline{Q(s, a)} - \overline{G_t}, \qquad G_t = \sum_{k \geq 0} \gamma^k r_{t+k}$$
 
+The last column of the tables below is the fraction of evaluation episodes that ended by
+**truncation** rather than termination, and it matters: `Q` bootstraps through a truncation while
+`G_t` stops at the horizon, so an agent whose episodes are cut short is systematically penalised by
+this metric. On LunarLander only 3–18 % of the episodes are truncated and the bias ordering is clean;
+on CartPole, where 33–90 % are truncated, the ordering follows episode length more than value error,
+so the bias claim is made on LunarLander only.
+
 {{figure:ex2_cartpole:CartPole-v1 — curves, Q-values, overestimation bias and greedy returns for the four agents.}}
 
 {{table:ex2_cartpole}}
@@ -218,9 +225,12 @@ to the terminal action. That is a useful negative result, and it is the reason t
 "shaping always helps" intuition is worth testing rather than assuming. Third, Double DQN is the
 best agent on `v0` and `v1`, while on `v2` the three agents are within noise of each other — which is
 what one expects when the state representation already carries the information: there is less room
-for the target correction to help. Finally, every agent remains far from the BFS optimum in
-*length*: they succeed 60–83 % of the time but wander 2–13 times longer than the shortest path, so
-the greedy policy is a local, not a global, optimum.
+for the target correction to help. Finally, every agent remains far from the BFS optimum in *length*: they succeed 60–83 % of the time
+but wander 2–13 times longer than the shortest path. That is not an artifact of the reward: we
+re-ran the three versions with a per-step penalty of −0.005 and of −0.01 and the episodes did **not**
+get shorter (56 and 60 steps against 51 for `v0` without penalty, 72 and 83 against 79 for `v1`),
+they only earned less. The greedy policy is a local optimum that never discovers the short route —
+success and optimality are different things, and only the second one requires search.
 
 # 6. Compute budget and reproducibility
 
@@ -280,13 +290,13 @@ three seeds and a band were for:
   +22 → +12 → +4 → −1 — and the pair gains 63 points, three times the band. On CartPole all four
   agents are inside each other's bands: the task is solved at this budget by everyone, so it cannot
   rank them.
-* **The custom environment transfers without a single line of agent code**, and it teaches the
-  lesson the assignment is after: the state representation dominates. The egocentric patch (`v2`)
+* **The custom environment transfers without a single line of agent code**, and it teaches two
+  lessons. The state representation dominates. The egocentric patch (`v2`)
   beats the one-hot planes (`v0`) and the raw coordinates (`v1`) on success rate and on episode
   length; the potential-based shaping of `v1` *hurts* (40 % against 65 %), which is a reminder that
   shaping changes what is easy to learn, not only how fast. And every learned policy stays 2–13
-  times longer than the BFS optimum even when it succeeds: success and optimality are different
-  things, and only the second one needs search.
+  times longer than the BFS optimum even when it succeeds — a per-step penalty does not fix that
+  (we tried −0.005 and −0.01), because the greedy policy is simply a local optimum.
 
 The deliverables contain the seven executed notebooks, `treasure_grid.py`, the best network of every
 agent, and the artifacts needed to regenerate every figure of this report.

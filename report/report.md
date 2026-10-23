@@ -33,6 +33,7 @@ re-training.
 
 * **CartPole-v1** --- best agent `soft` with a greedy score of 482.9 (target 475); solvable variants: `soft`.
 * **LunarLander-v3** --- best agent `dueling_double` with a greedy score of 259.6 (target 200); solvable variants: `soft`, `no_target`, `double`, `dueling`, `dueling_double`.
+* **ALE/Pong-v5** --- best agent `soft` with a greedy score of -2.8 (target 18); no variant reaches the target on the mean of three seeds.
 
 # 2. Part 0 --- the three environments
 
@@ -154,11 +155,18 @@ much more time to accumulate than on CartPole.
 
 | variant   |   training score |   greedy |   min seed |   max seed |   bias |
 |:----------|-----------------:|---------:|-----------:|-----------:|-------:|
-| hard      |            -13.6 |    -12.1 |        -21 |       -4.1 |    1.7 |
+| hard      |            -13.6 |    -12.1 |      -21   |       -4.1 |    1.7 |
+| soft      |             -6.7 |     -2.8 |       -9.5 |        5   |    1.8 |
 
 Training score = mean of the last episodes, greedy = 20 evaluation episodes ($\varepsilon$ = 0); min/max = band across the three seeds; bias = predicted Q minus the empirical discounted return.
 
+### Is the gap larger than the min--max band across seeds?
 
+| comparison   |   difference |   band | significant   |
+|:-------------|-------------:|-------:|:--------------|
+| hard vs soft |          9.3 |   16.9 | False         |
+
+* **`soft`** --- greedy -2.8 against -12.1 for the reference: it gains 9.3 points (higher) and this is a gap inside the band across seeds, so not conclusive (band 16.9).
 
 Pong is played from pixels with a Nature CNN and 6 actions; a random agent scores about -20 and the
 convention for "solved" is 18. The budget is identical for all variants and seeds (see §2): the
@@ -185,6 +193,13 @@ evaluation episodes:
 
 $$\text{bias} = \overline{Q(s, a)} - \overline{G_t}, \qquad G_t = \sum_{k \geq 0} \gamma^k r_{t+k}$$
 
+The last column of the tables below is the fraction of evaluation episodes that ended by
+**truncation** rather than termination, and it matters: `Q` bootstraps through a truncation while
+`G_t` stops at the horizon, so an agent whose episodes are cut short is systematically penalised by
+this metric. On LunarLander only 3--18 % of the episodes are truncated and the bias ordering is clean;
+on CartPole, where 33--90 % are truncated, the ordering follows episode length more than value error,
+so the bias claim is made on LunarLander only.
+
 ![CartPole-v1 --- curves, Q-values, overestimation bias and greedy returns for the four agents.](figures/ex2_cartpole.png){width=86%}
 
 
@@ -197,12 +212,12 @@ $$\text{bias} = \overline{Q(s, a)} - \overline{G_t}, \qquad G_t = \sum_{k \geq 0
 
 ### Overestimation bias
 
-| variant        |   q_pred |   mc_return |   bias |
-|:---------------|---------:|------------:|-------:|
-| hard           |    125.2 |        78   |   47.2 |
-| double         |    136   |        77.4 |   58.6 |
-| dueling        |    122   |        75.3 |   46.7 |
-| dueling_double |    110   |        69.2 |   40.8 |
+| variant        |   q_pred |   mc_return |   bias |   truncated |
+|:---------------|---------:|------------:|-------:|------------:|
+| hard           |    125.2 |        78   |   47.2 |         0.8 |
+| double         |    136   |        77.4 |   58.6 |         0.8 |
+| dueling        |    122   |        75.3 |   46.7 |         0.6 |
+| dueling_double |    110   |        69.2 |   40.8 |         0.3 |
 
 * **`double`** --- greedy 443.1 against 449.9 for the reference: it loses 6.8 points (lower) and this is a gap inside the band across seeds, so not conclusive (band 170.8).
 * **`dueling`** --- greedy 412.7 against 449.9 for the reference: it loses 37.2 points (lower) and this is a gap inside the band across seeds, so not conclusive (band 221.1).
@@ -225,12 +240,12 @@ we do not claim a winner. CartPole is simply too easy at this budget.
 
 ### Overestimation bias
 
-| variant        |   q_pred |   mc_return |   bias |
-|:---------------|---------:|------------:|-------:|
-| hard           |     55.7 |        33.7 |   22   |
-| double         |     57.5 |        45.5 |   11.9 |
-| dueling        |     63.8 |        59.4 |    4.3 |
-| dueling_double |     67.2 |        68.3 |   -1   |
+| variant        |   q_pred |   mc_return |   bias |   truncated |
+|:---------------|---------:|------------:|-------:|------------:|
+| hard           |     55.7 |        33.7 |   22   |         0.1 |
+| double         |     57.5 |        45.5 |   11.9 |         0.2 |
+| dueling        |     63.8 |        59.4 |    4.3 |         0.1 |
+| dueling_double |     67.2 |        68.3 |   -1   |         0   |
 
 * **`double`** --- greedy 222.5 against 196.7 for the reference: it gains 25.7 points (higher) and this is a gap inside the band across seeds, so not conclusive (band 76.7).
 * **`dueling`** --- greedy 250.3 against 196.7 for the reference: it gains 53.5 points (higher) and this is a gap larger than the band across seeds (band 20.4).
@@ -245,11 +260,22 @@ from the other side: the reference's values keep climbing past what the returns 
 dueling-double stays the flattest of the four, and the greedy-return bars order the agents exactly
 like the bias bars.
 
-_(figure ex2_pong not available yet)_
+![Pong --- the same four panels, with the same step budget as in Exercise 1.](figures/ex2_pong.png){width=86%}
 
-_(table ex2_pong not available yet --- run scripts/aggregate.py)_
 
-* **`double`** --- greedy -7.9 against -12.1 for the reference: it gains 4.2 points (higher) and this is a gap inside the band across seeds, so not conclusive (band 16.9).
+| variant   |   training score |   greedy |   min seed |   max seed |   bias |
+|:----------|-----------------:|---------:|-----------:|-----------:|-------:|
+| hard      |            -13.6 |    -12.1 |        -21 |       -4.1 |    1.7 |
+| double    |            -14.6 |    -11.5 |        -21 |       -5.6 |    0.8 |
+
+### Overestimation bias
+
+| variant   |   q_pred |   mc_return |   bias |   truncated |
+|:----------|---------:|------------:|-------:|------------:|
+| hard      |      0.7 |          -1 |    1.7 |         nan |
+| double    |     -0.2 |          -1 |    0.8 |         nan |
+
+* **`double`** --- greedy -11.5 against -12.1 for the reference: it gains 0.6 points (higher) and this is a gap inside the band across seeds, so not conclusive (band 16.9).
 * **Overestimation bias** --- `hard` +1.7, `double` +0.8; the least biased agent is `double`.
 
 # 5. Exercise 3 --- TreasureGrid, an environment written from scratch
@@ -273,9 +299,9 @@ Baselines over 50 episodes per version (success rate and episode length, compare
 
 | version   |   random_success |   random_length |   bfs_success |   bfs_length |   bfs_optimal |
 |:----------|-----------------:|----------------:|--------------:|-------------:|--------------:|
-| `v0`      |             0.24 |           30.56 |           1   |         6.18 |          6.18 |
-| `v1`      |             0.12 |           34.32 |           1   |         6.18 |          6.18 |
-| `v2`      |             0.06 |           16.22 |           0.9 |         6.4  |          6.18 |
+| `v0`      |             0.18 |           38.44 |           1   |         6.18 |          6.18 |
+| `v1`      |             0.2  |           35.1  |           1   |         6.18 |          6.18 |
+| `v2`      |             0.22 |           13.76 |           0.9 |         6.4  |          6.18 |
 
 Three agents (`hard`, `double`, `dueling`) are trained on every version, starting from the CartPole
 column of Part 0 (MLP 64, Adam 5e-4, buffer 100 000, batch 64, learn every step, target update every
@@ -319,9 +345,12 @@ to the terminal action. That is a useful negative result, and it is the reason t
 "shaping always helps" intuition is worth testing rather than assuming. Third, Double DQN is the
 best agent on `v0` and `v1`, while on `v2` the three agents are within noise of each other --- which is
 what one expects when the state representation already carries the information: there is less room
-for the target correction to help. Finally, every agent remains far from the BFS optimum in
-*length*: they succeed 60--83 % of the time but wander 2--13 times longer than the shortest path, so
-the greedy policy is a local, not a global, optimum.
+for the target correction to help. Finally, every agent remains far from the BFS optimum in *length*: they succeed 60--83 % of the time
+but wander 2--13 times longer than the shortest path. That is not an artifact of the reward: we
+re-ran the three versions with a per-step penalty of -0.005 and of -0.01 and the episodes did **not**
+get shorter (56 and 60 steps against 51 for `v0` without penalty, 72 and 83 against 79 for `v1`),
+they only earned less. The greedy policy is a local optimum that never discovers the short route ---
+success and optimality are different things, and only the second one requires search.
 
 # 6. Compute budget and reproducibility
 
@@ -329,12 +358,12 @@ the greedy policy is a local, not a global, optimum.
 |:----------------|-------:|---------------:|-----------------:|--------------:|
 | CartPole-v1     |     21 |           1.66 |          50496.9 |          0.58 |
 | LunarLander-v3  |     21 |           5.28 |         427986   |          1.85 |
-| ALE/Pong-v5     |      4 |          30.17 |         300000   |          2.01 |
+| ALE/Pong-v5     |      9 |          30.68 |         300000   |          4.6  |
 | TreasureGrid-v0 |      9 |           0.55 |          25175.3 |          0.08 |
 | TreasureGrid-v1 |      9 |           0.48 |          24704.7 |          0.07 |
 | TreasureGrid-v2 |      9 |           0.24 |          11515.2 |          0.04 |
 
-Total training time in this study: 4.6 core-hours.
+Total training time in this study: 7.2 core-hours.
 
 The Pong budget was fixed after a calibration run on the target GPU: `scripts/calibrate.py` times a
 short training segment of the exact loop used for the real runs and extrapolates. The same budget is
@@ -390,13 +419,13 @@ three seeds and a band were for:
   +22 $\to$ +12 $\to$ +4 $\to$ -1 --- and the pair gains 63 points, three times the band. On CartPole all four
   agents are inside each other's bands: the task is solved at this budget by everyone, so it cannot
   rank them.
-* **The custom environment transfers without a single line of agent code**, and it teaches the
-  lesson the assignment is after: the state representation dominates. The egocentric patch (`v2`)
+* **The custom environment transfers without a single line of agent code**, and it teaches two
+  lessons. The state representation dominates. The egocentric patch (`v2`)
   beats the one-hot planes (`v0`) and the raw coordinates (`v1`) on success rate and on episode
   length; the potential-based shaping of `v1` *hurts* (40 % against 65 %), which is a reminder that
   shaping changes what is easy to learn, not only how fast. And every learned policy stays 2--13
-  times longer than the BFS optimum even when it succeeds: success and optimality are different
-  things, and only the second one needs search.
+  times longer than the BFS optimum even when it succeeds --- a per-step penalty does not fix that
+  (we tried -0.005 and -0.01), because the greedy policy is simply a local optimum.
 
 The deliverables contain the seven executed notebooks, `treasure_grid.py`, the best network of every
 agent, and the artifacts needed to regenerate every figure of this report.

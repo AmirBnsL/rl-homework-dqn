@@ -91,8 +91,12 @@ def side_by_side(env_key: str, seed: int, scale: int = 2, fps: int = 30, hold: i
     else:
         to_rgb = lambda f: np.repeat(np.repeat(f, scale, 0), scale, 1)
 
-    left = [to_rgb(f) for f in random_episode["frames"]]
-    right = [to_rgb(f) for f in greedy_episode["frames"]]
+    def sample(frames, limit=400):
+        stride = max(1, len(frames) // limit)
+        return [to_rgb(f) for f in frames[::stride]]
+
+    left = sample(random_episode["frames"])
+    right = sample(greedy_episode["frames"])
     n = max(len(left), len(right))
     left += [left[-1]] * (n - len(left))
     right += [right[-1]] * (n - len(right))
@@ -133,8 +137,16 @@ def main() -> None:
     if len(outputs) > 1:  # concatenate the two clips
         import imageio.v2 as imageio
         clips = [imageio.mimread(path) for path in outputs]
+        width = min(clip[0].shape[1] for clip in clips)
+
+        def fit(frame):
+            if frame.shape[1] == width:
+                return frame
+            idx = np.linspace(0, frame.shape[1] - 1, width).astype(int)
+            return frame[:, idx]
+
         height = min(len(clip) for clip in clips)
-        combined = [np.vstack([clip[i] for clip in clips]) for i in range(height)]
+        combined = [np.vstack([fit(clip[i]) for clip in clips]) for i in range(height)]
         imageio.mimsave(os.path.join(ROOT, "video.mp4"), combined, fps=args.fps, macro_block_size=1)
         print("wrote video.mp4 (both games)")
 
