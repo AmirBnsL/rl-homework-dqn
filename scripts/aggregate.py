@@ -31,7 +31,7 @@ TABLES = os.path.join(ROOT, "report", "tables")
 
 def ex1_figure(env_name: str, runs_dir: str) -> str | None:
     results = load_matrix(env_name, EX1_VARIANTS, SEEDS, runs_dir)
-    if "hard" not in results:
+    if "hard" not in results or any(len(runs) < len(SEEDS) for runs in results.values()):
         return None
     spec = ENV_SPECS[env_name]
     x_key = "steps" if env_name == "pong" else "episode"
@@ -82,13 +82,14 @@ def compact(table: pd.DataFrame) -> str:
 
 def ex1_table(env_name: str, runs_dir: str) -> str | None:
     results = load_matrix(env_name, EX1_VARIANTS, SEEDS, runs_dir)
-    if not results:
+    if not results or any(len(runs) < len(SEEDS) for runs in results.values()):
         return None
     table = summary_table(results, env_name)
     comparisons = []
     for b in ("soft", "no_replay", "no_target"):
         if b in results:
             c = compare(results["hard"], results[b])
+            c["difference"] = -c["difference"]  # variant minus reference
             comparisons.append(dict(comparison=f"hard vs {b}", **c))
     lines = [f"## Exercise 1 — {ENV_SPECS[env_name]['label']}", "",
              compact(table), "",
@@ -108,7 +109,7 @@ def ex1_table(env_name: str, runs_dir: str) -> str | None:
 
 def ex2_figure(env_name: str, runs_dir: str) -> str | None:
     results = load_matrix(env_name, EX2_VARIANTS, SEEDS, runs_dir)
-    if "hard" not in results:
+    if "hard" not in results or any(len(runs) < len(SEEDS) for runs in results.values()):
         return None
     spec = ENV_SPECS[env_name]
     x_key = "steps" if env_name == "pong" else "episode"
@@ -152,7 +153,7 @@ def ex2_figure(env_name: str, runs_dir: str) -> str | None:
 
 def ex2_table(env_name: str, runs_dir: str) -> str | None:
     results = load_matrix(env_name, EX2_VARIANTS, SEEDS, runs_dir)
-    if not results:
+    if not results or any(len(runs) < len(SEEDS) for runs in results.values()):
         return None
     table = summary_table(results, env_name)
     bias = pd.DataFrame([dict(variant=v, seed=r["seed"], q_pred=float(np.mean(r["eval_q_pred"])),
@@ -161,8 +162,9 @@ def ex2_table(env_name: str, runs_dir: str) -> str | None:
                          for v, runs in results.items() for r in runs])
     lines = [f"## Exercise 2 — {ENV_SPECS[env_name]['label']}", "",
              compact(table), "", "### Overestimation bias", "",
-             bias.groupby("variant")[["q_pred", "mc_return", "bias"]].mean().round(1)
-             .to_markdown(), ""]
+             bias.groupby("variant")[["q_pred", "mc_return", "bias"]].mean()
+             .reindex([v for v in EX2_VARIANTS if v in bias["variant"].unique()])
+             .round(1).to_markdown(), ""]
     path = os.path.join(TABLES, f"ex2_{env_name}.md")
     os.makedirs(TABLES, exist_ok=True)
     with open(path, "w") as handle:
@@ -221,6 +223,12 @@ def ex3_figure_and_table(runs_dir: str) -> list[str]:
     return paths
 
 
+def _drop(path: str) -> None:
+    """Remove a stale artifact so an incomplete environment cannot leak into the report."""
+    if os.path.exists(path):
+        os.remove(path)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", default=None, choices=sorted(ENV_SPECS))
@@ -233,7 +241,14 @@ def main() -> None:
     for env_name in envs:
         for fn in (ex1_figure, ex1_table, ex2_figure, ex2_table):
             path = fn(env_name, args.runs)
-            print(("wrote " + os.path.relpath(path, ROOT)) if path else f"skip  {env_name} ({fn.__name__})")
+            if path:
+                print("wrote " + os.path.relpath(path, ROOT))
+            else:
+                stem = fn.__name__.replace("_figure", "").replace("_table", "")
+                _drop(os.path.join(FIGURES if "figure" in fn.__name__ else TABLES,
+                                   f"{stem}_{env_name}.png" if "figure" in fn.__name__
+                                   else f"{stem}_{env_name}.md"))
+                print(f"skip  {env_name} ({fn.__name__})")
     if not args.env:
         for path in ex3_figure_and_table(args.runs):
             print("wrote " + os.path.relpath(path, ROOT))

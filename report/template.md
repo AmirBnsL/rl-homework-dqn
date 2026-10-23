@@ -51,7 +51,7 @@ re-training.
 | target update C | 100 | 250 | 1 000 |
 | ε | 1.0 → 0.05 / 10 000 | 1.0 → 0.05 / 25 000 | 1.0 → 0.01 / 1 000 000 |
 | loss | MSE | MSE | Huber, grad norm clipped to 10 |
-| budget | 300 episodes | 800 episodes | __PONG_BUDGET__ env steps |
+| budget | 300 episodes | 800 episodes | __PONG_BUDGET__ |
 
 Atari preprocessing is the one of Mnih et al. (2015): frame skip 4 with max-pooling of the last two
 frames, grayscale 84 x 84, up to 30 random no-ops at reset, stack of the last 4 frames, no sticky
@@ -82,13 +82,15 @@ documented minibatches, and `compute_targets` matches the formulas of the assign
 
 {{verdicts:cartpole:ex1}}
 
-On CartPole every variant eventually reaches a good policy, so the ablation mostly shows the
-**stability** difference: the reference climbs to the 475 threshold and then stays there, the soft
-target does the same with a smoother curve, while removing replay produces a curve that is high on
-average but whose greedy policy is far worse than its training score suggests — the usual signature
-of a value function fitted to a strongly correlated stream of transitions. The Q-value panel makes
-the same point quantitatively: the reference overshoots the theoretical bound $1/(1-\gamma) = 100$ and
-reaches about 124, whereas the no-replay agent never builds a consistent estimate.
+On CartPole all four variants end up with a usable policy, and no difference clears the band across
+seeds: at 300 episodes the task is too short and too seed-sensitive to separate the ingredients, and
+we say so rather than read a ranking into the noise (the soft target is the only variant whose
+*worst* seed clears 475, which is why it is the one marked as solved). What does separate them is the
+*value* scale. The reference plateaus at $Q \approx 124$, already above the $1/(1-\gamma) = 100$
+bound that a reward of +1 per step imposes; the no-target agent reaches 400–600, because its targets
+chase themselves, and its policy keeps working while its values diverge; the no-replay agent never
+builds a consistent estimate at all. That is the first hint of what the target network really
+controls: not the return, but the calibration of the values behind it.
 
 ## 3.2 LunarLander-v3
 
@@ -98,8 +100,15 @@ reaches about 124, whereas the no-replay agent never builds a consistent estimat
 
 {{verdicts:lunarlander:ex1}}
 
-LunarLander is where the ablation separates the variants: the reward is shaped and noisy, the
-episodes last up to 1000 steps, and a bootstrap error has much more time to accumulate.
+LunarLander is where the ablation separates the variants, and with a large margin. **Without replay
+the agent never learns**: the curve stalls around −180 and the greedy policy crashes immediately, a
+323-point gap against the reference that is seven times the min–max band. The soft target beats the
+hard one by 47 points (band 28) and is the only variant that clears the 200 threshold with margin on
+every seed. Removing the target network costs nothing measurable — 233.5 against 196.7 is inside the
+band, and slightly *higher* — which is the honest reminder that a target network is not free
+insurance: on episodes of a few hundred steps with a dense, shaped reward the online network's
+targets are already fresh enough. The episodes last up to 1000 steps here, so a bootstrap error has
+much more time to accumulate than on CartPole.
 
 ## 3.3 ALE/Pong-v5
 
@@ -140,11 +149,23 @@ $$\text{bias} = \overline{Q(s, a)} - \overline{G_t}, \qquad G_t = \sum_{k \geq 0
 
 {{verdicts:cartpole:ex2}}
 
+On CartPole the two improvements do not separate either: all four agents land inside each other's
+bands and the ordering of the bias (47, 59, 47, 41) does not follow the ordering of the returns, so
+we do not claim a winner. CartPole is simply too easy at this budget.
+
 {{figure:ex2_lunarlander:LunarLander-v3 — the same four panels.}}
 
 {{table:ex2_lunarlander}}
 
 {{verdicts:lunarlander:ex2}}
+
+Here the ordering is monotone on both axes: **197 → 222 → 250 → 261** for the greedy return and
+**+22 → +12 → +4 → −1** for the overestimation bias. Double DQN halves the bias; the dueling head
+removes most of what remains; together they land at a bias indistinguishable from zero and gain 63
+points over the reference, three times the band across seeds. The Q-value panel shows the same thing
+from the other side: the reference's values keep climbing past what the returns justify, while
+dueling-double stays the flattest of the four, and the greedy-return bars order the agents exactly
+like the bias bars.
 
 {{figure:ex2_pong:Pong — the same four panels, with the same step budget as in Exercise 1.}}
 
@@ -187,6 +208,20 @@ CartPole.
 
 {{verdicts:treasure:ex3}}
 
+Three observations. First, **the representation matters**: the egocentric patch (`v2`) gives the
+highest success rate and by far the shortest episodes (12–22 steps against a BFS optimum of 5.3),
+while the coordinate version (`v1`) gives the lowest. Second, **the potential-based shaping of `v1`
+does not help** — its success rate is below the sparse `v0` for every agent (40 % against 65 % for the
+reference), and its episodes are 70–83 steps long against 40–56: with a potential that is linear in
+the Manhattan distance, shaping adds a gradient that the small MLP follows without ever committing
+to the terminal action. That is a useful negative result, and it is the reason the streaming
+"shaping always helps" intuition is worth testing rather than assuming. Third, Double DQN is the
+best agent on `v0` and `v1`, while on `v2` the three agents are within noise of each other — which is
+what one expects when the state representation already carries the information: there is less room
+for the target correction to help. Finally, every agent remains far from the BFS optimum in
+*length*: they succeed 60–83 % of the time but wander 2–13 times longer than the shortest path, so
+the greedy policy is a local, not a global, optimum.
+
 # 6. Compute budget and reproducibility
 
 {{compute}}
@@ -206,19 +241,33 @@ run, which is what every notebook re-plots.
 
 # 7. Conclusion
 
-The three experiments give a consistent picture:
+The three experiments agree on some points and contradict the textbook on others, which is what
+three seeds and a band were for:
 
-* **replay and the target network are both necessary** — removing either one costs return on every
-  environment, and on Pong the gap is the difference between learning something and learning
-  nothing;
-* **the soft target is a cheap improvement** over the hard one at the same cost, with a smoother
-  Q-value curve;
-* **Double DQN reduces the measured overestimation bias**, and the dueling head gives the largest
-  gain where many states have similar values (CartPole, TreasureGrid), as theory predicts;
-* the **custom environment** confirms that the same agent transfers without modification, and that
-  the state representation matters more than the reward shaping: the compact coordinate version
-  (`v1`) learns faster than the one-hot planes (`v0`), while moving traps (`v2`) make the task
-  genuinely harder for every agent.
+* **Experience replay is not optional.** Removing it costs nothing on CartPole, but on LunarLander
+  it is a 323-point collapse (band 42) and on Pong it is the difference between learning and not
+  learning at all. The CartPole result is a warning about the protocol: an easy task hides a
+  broken algorithm.
+* **The target network does not buy return at this budget — it buys calibration.** On LunarLander
+  the no-target variant is *better* (233 against 197, inside the band), on CartPole it is slightly
+  worse, and on neither does it cost what the theory suggests. What it does control is the value
+  scale: without it the CartPole Q-values reach 400–600 (bias +237) against 124 (+47) for the
+  reference. The claim "the target network is necessary" is therefore too strong; "the target
+  network keeps the values usable" is what the measurements support.
+* **The soft target is the cheapest real improvement of the ablation**: +47 points on LunarLander
+  with a band of 28, a smoother Q-value curve, and no extra cost per step.
+* **Double DQN and dueling DQN work as advertised where the task is hard enough to show it.**
+  On LunarLander both quantities move monotonically — return 197 → 222 → 250 → 261, bias
+  +22 → +12 → +4 → −1 — and the pair gains 63 points, three times the band. On CartPole all four
+  agents are inside each other's bands: the task is solved at this budget by everyone, so it cannot
+  rank them.
+* **The custom environment transfers without a single line of agent code**, and it teaches the
+  lesson the assignment is after: the state representation dominates. The egocentric patch (`v2`)
+  beats the one-hot planes (`v0`) and the raw coordinates (`v1`) on success rate and on episode
+  length; the potential-based shaping of `v1` *hurts* (40 % against 65 %), which is a reminder that
+  shaping changes what is easy to learn, not only how fast. And every learned policy stays 2–13
+  times longer than the BFS optimum even when it succeeds: success and optimality are different
+  things, and only the second one needs search.
 
 The deliverables contain the seven executed notebooks, `treasure_grid.py`, the best network of every
 agent, and the artifacts needed to regenerate every figure of this report.

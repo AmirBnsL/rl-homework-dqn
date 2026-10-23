@@ -37,7 +37,38 @@ TABLES = os.path.join(REPORT, "tables")
 RUNS = os.path.join(ROOT, "runs")
 
 
+def treasure_verdicts() -> str:
+    """Bullets for Exercise 3: per version, which agent wins and by how much."""
+    lines = []
+    summary = {}
+    for version, env_key in (("v0", "treasure_v0"), ("v1", "treasure_v1"), ("v2", "treasure_v2")):
+        results = load_matrix(env_key, ("hard", "double", "dueling"), SEEDS, RUNS)
+        if not results or any(len(runs) < len(SEEDS) for runs in results.values()):
+            continue
+        success = {agent: float(np.nanmean([np.nanmean(r["eval_success"]) for r in runs]))
+                   for agent, runs in results.items()}
+        greedy = {agent: float(np.mean([np.mean(r["eval_returns"]) for r in runs]))
+                  for agent, runs in results.items()}
+        length = {agent: float(np.mean([np.mean(r["eval_lengths"]) for r in runs]))
+                  for agent, runs in results.items()}
+        best = max(success, key=success.get)
+        summary[version] = (success, greedy, length, best)
+        lines.append(
+            f"* **TreasureGrid-{version}** — best success rate for `{best}` "
+            f"({success[best]:.0%}), greedy {greedy[best]:+.2f}, {length[best]:.0f} steps per episode "
+            f"(the three agents: " + ", ".join(f"`{a}` {success[a]:.0%}" for a in success) + ").")
+    if summary:
+        best_version = max(summary, key=lambda v: max(summary[v][0].values()))
+        worst_version = min(summary, key=lambda v: max(summary[v][0].values()))
+        lines.append(f"* Across versions, `{best_version}` gives the best agent "
+                     f"({max(summary[best_version][0].values()):.0%} success) and `{worst_version}` "
+                     f"the worst ({max(summary[worst_version][0].values()):.0%}).")
+    return "\n".join(lines) if lines else "_(no run available yet)_"
+
+
 def verdict_bullets(env_name: str, suite: str) -> str:
+    if suite == "ex3":
+        return treasure_verdicts()
     variants = EX1_VARIANTS if suite == "ex1" else EX2_VARIANTS
     results = load_matrix(env_name, variants, SEEDS, RUNS)
     if "hard" not in results:
