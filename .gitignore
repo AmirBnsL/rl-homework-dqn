@@ -1,0 +1,17 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# run artifacts: keep metrics, drop the (large) network weights except the delivered ones
+runs/**/*.pth
+runs/**/*.tmp.npz
+*.log
+
+# generated
+notebooks/*_output.ipynb
+report/figures/*.png
+report/tables/*.md
+!report/figures/.gitkeep
+!report/tables/.gitkeep
