@@ -2,7 +2,7 @@
 title: "Homework Assignment 1 --- Deep Q-Network"
 subtitle: "Ablation of DQN, Double/Dueling DQN, and a custom Gymnasium environment"
 author: "Amir Benslimane"
-date: "2026-10-23"
+date: "2026-10-24"
 geometry: margin=1.9cm
 fontsize: 9pt
 ---
@@ -33,6 +33,7 @@ re-training.
 
 * **CartPole-v1** --- best agent `soft` with a greedy score of 482.9 (target 475); solvable variants: `soft`.
 * **LunarLander-v3** --- best agent `dueling_double` with a greedy score of 259.6 (target 200); solvable variants: `soft`, `no_target`, `double`, `dueling`, `dueling_double`.
+* **ALE/Pong-v5** --- best agent `soft` with a greedy score of -2.8 (target 18); no variant reaches the target on the mean of three seeds.
 
 # 2. Part 0 --- the three environments
 
@@ -76,7 +77,7 @@ documented minibatches, and `compute_targets` matches the formulas of the assign
 
 ## 3.1 CartPole-v1
 
-![CartPole-v1 --- 20-episode moving average (top) and predicted Q-values (bottom), mean of 3 seeds with the min--max band.](figures/ex1_cartpole.png){width=80%}
+![CartPole-v1 --- 20-episode moving average (top) and predicted Q-values (bottom), mean of 3 seeds with the min--max band.](figures/ex1_cartpole.png){width=74%}
 
 
 | variant   |   training score |   greedy |   min seed |   max seed |   bias |
@@ -110,7 +111,7 @@ network really controls --- not the return, but the calibration of the values be
 
 ## 3.2 LunarLander-v3
 
-![LunarLander-v3 --- 20-episode moving average (top) and predicted Q-values (bottom).](figures/ex1_lunarlander.png){width=80%}
+![LunarLander-v3 --- 20-episode moving average (top) and predicted Q-values (bottom).](figures/ex1_lunarlander.png){width=74%}
 
 
 | variant   |   training score |   greedy |   min seed |   max seed |   bias |
@@ -146,16 +147,40 @@ much more time to accumulate than on CartPole.
 
 ## 3.3 ALE/Pong-v5
 
-_(figure ex1_pong not available yet)_
+![Pong --- 20-game moving average and predicted Q-values for the four variants, same budget for every variant and seed.](figures/ex1_pong.png){width=74%}
 
-_(table ex1_pong not available yet --- run scripts/aggregate.py)_
+
+| variant   |   training score |   greedy |   min seed |   max seed |   bias |
+|:----------|-----------------:|---------:|-----------:|-----------:|-------:|
+| hard      |            -13.6 |    -12.1 |      -21   |       -4.1 |    1.7 |
+| soft      |             -6.7 |     -2.8 |       -9.5 |        5   |    1.8 |
+| no_replay |            -20.5 |    -21   |      -21   |      -21   |    1.1 |
+| no_target |            -14.8 |    -13.3 |      -21   |       -3.9 |    1.3 |
+
+Training score = mean of the last episodes, greedy = 20 evaluation episodes ($\varepsilon$ = 0); min/max = band across the three seeds; bias = predicted Q minus the empirical discounted return.
+
+### Is the gap larger than the min--max band across seeds?
+
+| comparison        |   difference |   band | significant   |
+|:------------------|-------------:|-------:|:--------------|
+| hard vs soft      |          9.3 |   16.9 | False         |
+| hard vs no_replay |         -8.9 |   16.9 | False         |
+| hard vs no_target |         -1.2 |   17.1 | False         |
 
 * **`soft`** --- greedy -2.8 against -12.1 for the reference: it gains 9.3 points (higher) and this is a gap inside the band across seeds, so not conclusive (band 16.9).
 * **`no_replay`** --- greedy -21.0 against -12.1 for the reference: it loses 8.9 points (lower) and this is a gap inside the band across seeds, so not conclusive (band 16.9).
+* **`no_target`** --- greedy -13.3 against -12.1 for the reference: it loses 1.2 points (lower) and this is a gap inside the band across seeds, so not conclusive (band 17.1).
 
 Pong is played from pixels with a Nature CNN and 6 actions; a random agent scores about -20 and the
-convention for "solved" is 18. The budget is identical for all variants and seeds (see §2): the
-calibration that justified it is described in §6.
+convention for "solved" is 18. At the uniform budget of 300,000 env steps the task sits at the edge of
+what DQN learns in a single run, and the ablation separates *learning* from *not learning* rather
+than ranking the variants: the reference scores -4.1, -11.2 and -21.0 on its three seeds (one seed
+never leaves the random-agent level), the soft target is the only variant whose mean is positive
+(+5.1, -9.5, -3.9), and **all three no-replay seeds sit at exactly -21.0** with a flat curve --- the
+same signature as the -180 collapse on LunarLander, now without the possibility of mistaking it for
+noise. The bands across seeds (17--20 points) are wider than the gaps between the remaining variants,
+so no finer claim is made: at 10^6 steps the ordering would have room to emerge, and §6 explains why
+that budget was out of reach here.
 
 # 4. Exercise 2 --- Double DQN and Dueling DQN
 
@@ -185,7 +210,7 @@ this metric. On LunarLander only 3--18 % of the episodes are truncated and the b
 on CartPole, where 33--90 % are truncated, the ordering follows episode length more than value error,
 so the bias claim is made on LunarLander only.
 
-![CartPole-v1 --- curves, Q-values, overestimation bias and greedy returns for the four agents.](figures/ex2_cartpole.png){width=80%}
+![CartPole-v1 --- curves, Q-values, overestimation bias and greedy returns for the four agents.](figures/ex2_cartpole.png){width=74%}
 
 
 | variant        |   training score |   greedy |   min seed |   max seed |   bias |
@@ -213,7 +238,7 @@ On CartPole the two improvements do not separate either: all four agents land in
 bands and the ordering of the bias (47, 59, 47, 41) does not follow the ordering of the returns, so
 we do not claim a winner. CartPole is simply too easy at this budget.
 
-![LunarLander-v3 --- the same four panels.](figures/ex2_lunarlander.png){width=80%}
+![LunarLander-v3 --- the same four panels.](figures/ex2_lunarlander.png){width=74%}
 
 
 | variant        |   training score |   greedy |   min seed |   max seed |   bias |
@@ -245,13 +270,38 @@ from the other side: the reference's values keep climbing past what the returns 
 dueling-double stays the flattest of the four, and the greedy-return bars order the agents exactly
 like the bias bars.
 
-_(figure ex2_pong not available yet)_
+![Pong --- the same four panels, with the same step budget as in Exercise 1.](figures/ex2_pong.png){width=74%}
 
-_(table ex2_pong not available yet --- run scripts/aggregate.py)_
+
+| variant        |   training score |   greedy |   min seed |   max seed |   bias |
+|:---------------|-----------------:|---------:|-----------:|-----------:|-------:|
+| hard           |            -13.6 |    -12.1 |        -21 |       -4.1 |    1.7 |
+| double         |            -14.6 |    -11.5 |        -21 |       -5.6 |    0.8 |
+| dueling        |            -10   |     -6.8 |        -21 |        1   |    1.3 |
+| dueling_double |            -17.5 |    -15.6 |        -21 |       -4.8 |    0.7 |
+
+### Overestimation bias
+
+| variant        |   q_pred |   mc_return |   bias |
+|:---------------|---------:|------------:|-------:|
+| hard           |      0.7 |        -1   |    1.7 |
+| double         |     -0.2 |        -1   |    0.8 |
+| dueling        |      0.5 |        -0.8 |    1.3 |
+| dueling_double |     -1   |        -1.7 |    0.7 |
 
 * **`double`** --- greedy -11.5 against -12.1 for the reference: it gains 0.6 points (higher) and this is a gap inside the band across seeds, so not conclusive (band 16.9).
-* **`dueling`** --- greedy -10.7 against -12.1 for the reference: it gains 1.4 points (higher) and this is a gap inside the band across seeds, so not conclusive (band 20.7).
-* **Overestimation bias** --- `hard` +1.7, `double` +0.8, `dueling` +1.1; the least biased agent is `double`.
+* **`dueling`** --- greedy -6.8 against -12.1 for the reference: it gains 5.3 points (higher) and this is a gap inside the band across seeds, so not conclusive (band 22.1).
+* **`dueling_double`** --- greedy -15.6 against -12.1 for the reference: it loses 3.5 points (lower) and this is a gap inside the band across seeds, so not conclusive (band 16.9).
+* **Overestimation bias** --- `hard` +1.7, `double` +0.8, `dueling` +1.3, `dueling_double` +0.7; the least biased agent is `dueling_double`.
+
+Pong does **not** reproduce the LunarLander ordering, and the report says so: at this budget the
+reference and Double DQN are indistinguishable (-12.1 and -11.5, each with one seed that never
+leaves -21), the dueling head is the best of the four (-6.8, with one seed at +1.05 that actually
+beats the opponent), and dueling-double is the worst (-15.6). The two corrections do not add up here,
+the opposite of what LunarLander showed --- a fair reminder that these improvements are not additive
+and that their benefit depends on the regime. The bias is small in absolute terms for all four
+(0.7--1.7 on a reward scale of ±1) precisely because at 300 000 steps the agents have barely learned
+a value function: there is little overestimation to remove when there is little value.
 
 # 5. Exercise 3 --- TreasureGrid, an environment written from scratch
 
@@ -274,9 +324,9 @@ Baselines over 50 episodes per version (success rate and episode length, compare
 
 | version   |   random_success |   random_length |   bfs_success |   bfs_length |   bfs_optimal |
 |:----------|-----------------:|----------------:|--------------:|-------------:|--------------:|
-| `v0`      |             0.26 |           36.84 |           1   |         6.18 |          6.18 |
-| `v1`      |             0.14 |           39.78 |           1   |         6.18 |          6.18 |
-| `v2`      |             0.08 |           13.76 |           0.9 |         6.4  |          6.18 |
+| `v0`      |             0.22 |           32.88 |           1   |         6.18 |          6.18 |
+| `v1`      |             0.18 |           41.28 |           1   |         6.18 |          6.18 |
+| `v2`      |             0.08 |           14.5  |           0.9 |         6.4  |          6.18 |
 
 Three agents (`hard`, `double`, `dueling`) are trained on every version, starting from the CartPole
 column of Part 0 (MLP 64, Adam 5e-4, buffer 100 000, batch 64, learn every step, target update every
@@ -288,7 +338,7 @@ make dying on a trap cheaper than finishing the episode. The budget is 800 episo
 themselves run without any modification: only `observation_space` and `action_space` differ from
 CartPole.
 
-![TreasureGrid --- learning curves of the three agents on the three versions (3 seeds).](figures/ex3_curves.png){width=80%}
+![TreasureGrid --- learning curves of the three agents on the three versions (3 seeds).](figures/ex3_curves.png){width=74%}
 
 
 | version   | agent   |   train_score |   greedy |   success |   length |   bfs_optimal |   length_over_bfs |
@@ -333,12 +383,12 @@ success and optimality are different things, and only the second one requires se
 |:----------------|-------:|---------------:|-----------------:|--------------:|
 | CartPole-v1     |     21 |           1.66 |          50496.9 |          0.58 |
 | LunarLander-v3  |     21 |           5.28 |         427986   |          1.85 |
-| ALE/Pong-v5     |     13 |          31.02 |         300000   |          6.72 |
+| ALE/Pong-v5     |     21 |          31.8  |         300000   |         11.13 |
 | TreasureGrid-v0 |      9 |           0.55 |          25175.3 |          0.08 |
 | TreasureGrid-v1 |      9 |           0.48 |          24704.7 |          0.07 |
 | TreasureGrid-v2 |      9 |           0.24 |          11515.2 |          0.04 |
 
-Total training time in this study: 9.3 core-hours.
+Total training time in this study: 13.8 core-hours.
 
 The Pong budget was fixed after a calibration run on the target GPU: `scripts/calibrate.py` times a
 short training segment of the exact loop used for the real runs and extrapolates. The same budget is
@@ -355,9 +405,9 @@ run, which is what every notebook re-plots.
 
 ## 6.1 Limitations of this protocol
 
-* **Three seeds is the protocol's floor.** The min--max band across three seeds is a conservative
-  criterion: one outlier seed can make the band exceed the effect we are looking for, which is
-  exactly what happens on CartPole and why no claim here rests on a single environment.
+* **Three seeds is the protocol's floor.** The min--max band is conservative: one outlier seed can
+  exceed the effect we are looking for, which is what happens on CartPole --- and why no claim here
+  rests on a single environment.
 * **Pong is measured below its reference budget.** At 300,000 env steps the task is at the edge of what
   DQN can learn in one run: a random agent scores -20 and one of our reference seeds finishes at
   -21, i.e. it did not learn at all. The Pong comparison is therefore a comparison *in this regime*;
@@ -374,9 +424,9 @@ The three experiments agree on some points and contradict the textbook on others
 three seeds and a band were for:
 
 * **Experience replay is not optional.** Removing it costs nothing on CartPole, but on LunarLander
-  it is a 323-point collapse (band 42) and on Pong it is the difference between learning and not
-  learning at all. The CartPole result is a warning about the protocol: an easy task hides a
-  broken algorithm.
+  it is a 323-point collapse (band 42) and on Pong all three no-replay seeds stay at exactly -21.0,
+  the random-agent score, while the reference reaches -4.1 on its best seed. The CartPole result is
+  a warning about the protocol: an easy task hides a broken algorithm.
 * **The target network does not buy return at this budget --- it buys calibration.** On LunarLander
   the no-target variant is *better* (233 against 197, inside the band), on CartPole it is slightly
   worse, and on neither does it cost what the theory suggests. What it does control is the value
@@ -385,18 +435,18 @@ three seeds and a band were for:
   network keeps the values usable" is what the measurements support.
 * **The soft target is the cheapest real improvement of the ablation**: +47 points on LunarLander
   with a band of 28, a smoother Q-value curve, and no extra cost per step.
-* **Double DQN and dueling DQN work as advertised where the task is hard enough to show it.**
-  On LunarLander both quantities move monotonically --- return 197 $\to$ 222 $\to$ 250 $\to$ 261, bias
-  +22 $\to$ +12 $\to$ +4 $\to$ -1 --- and the pair gains 63 points, three times the band. On CartPole all four
-  agents are inside each other's bands: the task is solved at this budget by everyone, so it cannot
-  rank them.
-* **The custom environment transfers without a single line of agent code**, and it teaches two
-  lessons. The state representation dominates. The egocentric patch (`v2`)
+* **Double DQN and dueling DQN work as advertised --- where the task has the room to show it.**
+  On LunarLander both quantities move monotonically (return 197 $\to$ 222 $\to$ 250 $\to$ 261, bias
+  +22 $\to$ +12 $\to$ +4 $\to$ -1) and the pair gains 63 points, three times the band. On CartPole all four
+  agents are inside each other's bands, and on Pong the ordering *reverses* (dueling best,
+  dueling-double worst): the improvements are not additive, and their value is regime-dependent.
+* **The custom environment transfers without a single line of agent code**, and the state
+  representation dominates. The egocentric patch (`v2`)
   beats the one-hot planes (`v0`) and the raw coordinates (`v1`) on success rate and on episode
   length; the potential-based shaping of `v1` *hurts* (40 % against 65 %), which is a reminder that
   shaping changes what is easy to learn, not only how fast. And every learned policy stays 2--13
   times longer than the BFS optimum even when it succeeds --- a per-step penalty does not fix that
   (we tried -0.005 and -0.01), because the greedy policy is simply a local optimum.
 
-The deliverables contain the seven executed notebooks, `treasure_grid.py`, the best network of every
-agent, and the artifacts needed to regenerate every figure of this report.
+The archive contains the seven executed notebooks, `treasure_grid.py`, the best network of every agent
+and the artifacts behind every figure.

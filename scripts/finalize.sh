@@ -25,7 +25,7 @@ $PY scripts/aggregate.py
 
 echo "== 5/6 report and video =="
 $PY scripts/build_report.py --author "$NAME"
-$PY scripts/make_video.py --game both --scale 2 --fps 20 --hold 2 || echo "video skipped"
+$PY scripts/make_video.py --game both --scale 2 --fps 20 --hold 3 || echo "video skipped"
 
 echo "== 6/6 archive =="
 $PY scripts/package.py --name "$NAME"

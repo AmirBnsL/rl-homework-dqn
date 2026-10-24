@@ -185,7 +185,7 @@ def include_figure(name: str, caption: str) -> str:
     path = os.path.join(FIGURES, f"{name}.png")
     if not os.path.exists(path):
         return f"_(figure {name} not available yet)_"
-    return f"![{caption}](figures/{name}.png){{width=80%}}\n"
+    return f"![{caption}](figures/{name}.png){{width=74%}}\n"
 
 
 TEXT_SYMBOLS = {
@@ -243,7 +243,7 @@ def build(author: str, date: str) -> str:
 def to_pdf(markdown_path: str) -> str:
     pdf_path = os.path.join(REPORT, "report.pdf")
     command = ["pandoc", os.path.basename(markdown_path), "-o", os.path.basename(pdf_path),
-               "--pdf-engine=pdflatex", "-V", "geometry:margin=1.7cm", "-V", "fontsize=10pt",
+               "--pdf-engine=pdflatex", "-V", "geometry:margin=1.5cm", "-V", "fontsize=10pt",
                "-V", "colorlinks=true", "--resource-path", "."]
     subprocess.run(command, cwd=REPORT, check=True)
     return pdf_path

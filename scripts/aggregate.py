@@ -31,7 +31,7 @@ TABLES = os.path.join(ROOT, "report", "tables")
 
 def ex1_figure(env_name: str, runs_dir: str) -> str | None:
     results = load_matrix(env_name, EX1_VARIANTS, SEEDS, runs_dir)
-    if "hard" not in results or any(len(runs) < len(SEEDS) for runs in results.values()):
+    if not complete(results, EX1_VARIANTS):
         return None
     spec = ENV_SPECS[env_name]
     x_key = "steps" if env_name == "pong" else "episode"
@@ -87,6 +87,11 @@ def ex1_figure(env_name: str, runs_dir: str) -> str | None:
 REPORT_COLUMNS = ["train_score", "greedy_mean", "greedy_min", "greedy_max", "bias"]
 
 
+def complete(results: dict, variants) -> bool:
+    """True only when every requested variant ran on every seed (a missing variant is not a result)."""
+    return all(variant in results and len(results[variant]) == len(SEEDS) for variant in variants)
+
+
 def compact(table: pd.DataFrame) -> str:
     """Keep the columns that fit in the report, with readable headers."""
     columns = [c for c in REPORT_COLUMNS if c in table.columns]
@@ -99,7 +104,7 @@ def compact(table: pd.DataFrame) -> str:
 
 def ex1_table(env_name: str, runs_dir: str) -> str | None:
     results = load_matrix(env_name, EX1_VARIANTS, SEEDS, runs_dir)
-    if not results or any(len(runs) < len(SEEDS) for runs in results.values()):
+    if not complete(results, EX1_VARIANTS):
         return None
     table = summary_table(results, env_name)
     comparisons = []
@@ -126,7 +131,7 @@ def ex1_table(env_name: str, runs_dir: str) -> str | None:
 
 def ex2_figure(env_name: str, runs_dir: str) -> str | None:
     results = load_matrix(env_name, EX2_VARIANTS, SEEDS, runs_dir)
-    if "hard" not in results or any(len(runs) < len(SEEDS) for runs in results.values()):
+    if not complete(results, EX2_VARIANTS):
         return None
     spec = ENV_SPECS[env_name]
     x_key = "steps" if env_name == "pong" else "episode"
@@ -170,7 +175,7 @@ def ex2_figure(env_name: str, runs_dir: str) -> str | None:
 
 def ex2_table(env_name: str, runs_dir: str) -> str | None:
     results = load_matrix(env_name, EX2_VARIANTS, SEEDS, runs_dir)
-    if not results or any(len(runs) < len(SEEDS) for runs in results.values()):
+    if not complete(results, EX2_VARIANTS):
         return None
     table = summary_table(results, env_name)
     limit = ENV_SPECS[env_name]["max_episode_steps"]
@@ -185,7 +190,7 @@ def ex2_table(env_name: str, runs_dir: str) -> str | None:
              compact(table), "", "### Overestimation bias", "",
              bias.groupby("variant")[["q_pred", "mc_return", "bias", "truncated"]].mean()
              .reindex([v for v in EX2_VARIANTS if v in bias["variant"].unique()])
-             .round(1).to_markdown(), ""]
+             .dropna(axis=1, how="all").round(1).to_markdown(), ""]
     path = os.path.join(TABLES, f"ex2_{env_name}.md")
     os.makedirs(TABLES, exist_ok=True)
     with open(path, "w") as handle:

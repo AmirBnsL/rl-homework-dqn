@@ -184,6 +184,15 @@ like the bias bars.
 
 {{verdicts:pong:ex2}}
 
+Pong does **not** reproduce the LunarLander ordering, and the report says so: at this budget the
+reference and Double DQN are indistinguishable (−12.1 and −11.5, each with one seed that never
+leaves −21), the dueling head is the best of the four (−6.8, with one seed at +1.05 that actually
+beats the opponent), and dueling-double is the worst (−15.6). The two corrections do not add up here,
+the opposite of what LunarLander showed — a fair reminder that these improvements are not additive
+and that their benefit depends on the regime. The bias is small in absolute terms for all four
+(0.7–1.7 on a reward scale of ±1) precisely because at 300 000 steps the agents have barely learned
+a value function: there is little overestimation to remove when there is little value.
+
 # 5. Exercise 3 — TreasureGrid, an environment written from scratch
 
 `treasure_grid.py` implements a Gymnasium environment from scratch: an `N x N` grid (N = 6) with
@@ -255,9 +264,9 @@ run, which is what every notebook re-plots.
 
 ## 6.1 Limitations of this protocol
 
-* **Three seeds is the protocol's floor.** The min–max band across three seeds is a conservative
-  criterion: one outlier seed can make the band exceed the effect we are looking for, which is
-  exactly what happens on CartPole and why no claim here rests on a single environment.
+* **Three seeds is the protocol's floor.** The min–max band is conservative: one outlier seed can
+  exceed the effect we are looking for, which is what happens on CartPole — and why no claim here
+  rests on a single environment.
 * **Pong is measured below its reference budget.** At __PONG_BUDGET__ the task is at the edge of what
   DQN can learn in one run: a random agent scores −20 and one of our reference seeds finishes at
   −21, i.e. it did not learn at all. The Pong comparison is therefore a comparison *in this regime*;
@@ -285,18 +294,18 @@ three seeds and a band were for:
   network keeps the values usable" is what the measurements support.
 * **The soft target is the cheapest real improvement of the ablation**: +47 points on LunarLander
   with a band of 28, a smoother Q-value curve, and no extra cost per step.
-* **Double DQN and dueling DQN work as advertised where the task is hard enough to show it.**
-  On LunarLander both quantities move monotonically — return 197 → 222 → 250 → 261, bias
-  +22 → +12 → +4 → −1 — and the pair gains 63 points, three times the band. On CartPole all four
-  agents are inside each other's bands: the task is solved at this budget by everyone, so it cannot
-  rank them.
-* **The custom environment transfers without a single line of agent code**, and it teaches two
-  lessons. The state representation dominates. The egocentric patch (`v2`)
+* **Double DQN and dueling DQN work as advertised — where the task has the room to show it.**
+  On LunarLander both quantities move monotonically (return 197 → 222 → 250 → 261, bias
+  +22 → +12 → +4 → −1) and the pair gains 63 points, three times the band. On CartPole all four
+  agents are inside each other's bands, and on Pong the ordering *reverses* (dueling best,
+  dueling-double worst): the improvements are not additive, and their value is regime-dependent.
+* **The custom environment transfers without a single line of agent code**, and the state
+  representation dominates. The egocentric patch (`v2`)
   beats the one-hot planes (`v0`) and the raw coordinates (`v1`) on success rate and on episode
   length; the potential-based shaping of `v1` *hurts* (40 % against 65 %), which is a reminder that
   shaping changes what is easy to learn, not only how fast. And every learned policy stays 2–13
   times longer than the BFS optimum even when it succeeds — a per-step penalty does not fix that
   (we tried −0.005 and −0.01), because the greedy policy is simply a local optimum.
 
-The deliverables contain the seven executed notebooks, `treasure_grid.py`, the best network of every
-agent, and the artifacts needed to regenerate every figure of this report.
+The archive contains the seven executed notebooks, `treasure_grid.py`, the best network of every agent
+and the artifacts behind every figure.

@@ -32,7 +32,7 @@ def curve_stats(runs, key: str = "episode_returns", window: int = 20, x_key: str
 
 
 def plot_curves(ax, runs_by_label: dict, window: int = 20, x_key: str = "episode",
-                threshold: float | None = None, title: str = "", xlabel: str = "episode",
+                threshold: float | None = None, title: str = "", xlabel: str | None = None,
                 ylabel: str = "return") -> None:
     for label, runs in runs_by_label.items():
         grid, mean, aligned = curve_stats(runs, window=window, x_key=x_key)
@@ -40,7 +40,8 @@ def plot_curves(ax, runs_by_label: dict, window: int = 20, x_key: str = "episode
         ax.fill_between(grid, aligned.min(axis=0), aligned.max(axis=0), alpha=0.18)
     if threshold is not None:
         ax.axhline(threshold, ls="--", c="k", lw=1, label=f"solved ({threshold:g})")
-    ax.set(xlabel=xlabel, ylabel=ylabel, title=title)
+    ax.set(xlabel=xlabel or ("environment steps" if x_key == "steps" else "episode"),
+           ylabel=ylabel, title=title)
     ax.legend(fontsize=8)
 
 

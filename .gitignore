@@ -21,3 +21,7 @@ report/tables/*.md
 
 # archive built by scripts/package.py
 *.zip
+
+# per-game intermediates: video.mp4 is the deliverable
+video_pong.mp4
+video_treasure_*.mp4

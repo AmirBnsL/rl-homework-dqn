@@ -66,7 +66,7 @@ def collect() -> list[str]:
                 if directory == "runs" and name.endswith(".pth"):
                     continue
                 files.append(os.path.relpath(os.path.join(current, name), ROOT))
-    for optional in ("video.mp4", "video_pong.mp4", "video_treasure_v0.mp4"):
+    for optional in ("video.mp4",):  # the two per-game clips are intermediates
         if os.path.exists(os.path.join(ROOT, optional)):
             files.append(optional)
     if missing:

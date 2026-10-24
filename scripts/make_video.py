@@ -34,13 +34,14 @@ def best_run(env_key: str, variants, seeds=(0, 1, 2)):
 
 def play(env, policy, seed: int, max_frames: int = 4000):
     state, info = env.reset(seed=seed)
-    frames, total, done = [env.render()], 0.0, False
+    frames, running, total, done = [env.render()], [0.0], 0.0, False
     while not done and len(frames) < max_frames:
         state, reward, terminated, truncated, info = env.step(policy(state))
         frames.append(env.render())
         total += float(reward)
+        running.append(total)
         done = terminated or truncated
-    return dict(frames=frames, return_=total, success=info.get("success"),
+    return dict(frames=frames, running=running, return_=total, success=info.get("success"),
                 steps=info.get("steps", len(frames) - 1))
 
 
@@ -56,7 +57,8 @@ def annotate(frame, title: str, subtitle: str, colour=(0, 0, 0)):
     return np.asarray(image)
 
 
-def side_by_side(env_key: str, seed: int, scale: int = 2, fps: int = 30, hold: int = 1) -> str | None:
+def side_by_side(env_key: str, seed: int, scale: int = 2, fps: int = 30,
+                 hold: int = 1) -> tuple[str, int] | None:
     import imageio
 
     spec = ENV_SPECS[env_key]
@@ -104,22 +106,23 @@ def side_by_side(env_key: str, seed: int, scale: int = 2, fps: int = 30, hold: i
     separator = np.full((left[0].shape[0], 6, 3), 40, dtype=np.uint8)
     video = []
     for t in range(n):
-        lframe = annotate(left[t], "random agent",
-                          f"return {min(t, random_episode['steps'])}"
-                          if env_key == "pong" else
-                          f"steps {min(t, random_episode['steps'])}")
+        def subtitle(episode, index):
+            if env_key == "pong":  # the score so far, not the step count
+                position = min(t, len(episode["running"]) - 1)
+                return f"score {episode['running'][position]:+.0f}"
+            return f"steps {min(t, episode['steps'])}"
+
+        lframe = annotate(left[t], "random agent", subtitle(random_episode, t))
         rframe = annotate(right[t], f"trained agent ({run['variant']}, seed {run['seed']})",
-                          f"return {min(t, greedy_episode['steps'])}"
-                          if env_key == "pong" else
-                          f"steps {min(t, greedy_episode['steps'])}", colour=(0, 110, 0))
+                          subtitle(greedy_episode, t), colour=(0, 110, 0))
         video.append(np.hstack([lframe, separator, rframe]))
 
     video = [frame for frame in video for _ in range(max(1, hold))]  # slow short episodes down
     out = os.path.join(ROOT, f"video_{env_key}.mp4")
     imageio.mimsave(out, video, fps=fps, macro_block_size=1)
     print(f"wrote {out} | random return {random_episode['return_']:.1f} "
-          f"vs trained {greedy_episode['return_']:.1f}")
-    return out
+          f"vs trained {greedy_episode['return_']:.1f} | {len(video)} frames")
+    return out, len(video)
 
 
 def main() -> None:
@@ -133,11 +136,15 @@ def main() -> None:
     chosen = games if args.game == "both" else {args.game: games[args.game]}
     outputs = [side_by_side(key, seed=100_000, scale=args.scale, fps=args.fps, hold=args.hold)
                for key in chosen.values()]
-    outputs = [path for path in outputs if path]
-    if len(outputs) > 1:  # concatenate the two clips
+    outputs = [item for item in outputs if item]
+    if len(outputs) > 1:  # stack the two clips, streaming so that both fit in memory
         import imageio.v2 as imageio
-        clips = [imageio.mimread(path) for path in outputs]
-        width = min(clip[0].shape[1] for clip in clips)
+        from imageio import get_reader, get_writer
+
+        paths = [path for path, _ in outputs]
+        counts = [count for _, count in outputs]
+        readers = [get_reader(path) for path in paths]
+        width = min(reader.get_meta_data()["size"][0] for reader in readers)
 
         def fit(frame):
             if frame.shape[1] == width:
@@ -145,10 +152,26 @@ def main() -> None:
             idx = np.linspace(0, frame.shape[1] - 1, width).astype(int)
             return frame[:, idx]
 
-        height = min(len(clip) for clip in clips)
-        combined = [np.vstack([fit(clip[i]) for clip in clips]) for i in range(height)]
-        imageio.mimsave(os.path.join(ROOT, "video.mp4"), combined, fps=args.fps, macro_block_size=1)
-        print("wrote video.mp4 (both games)")
+        target = os.path.join(ROOT, "video.mp4")
+        writer = get_writer(target, fps=args.fps, macro_block_size=1)
+        last = [None] * len(readers)
+        total = max(counts)
+        for index in range(total):
+            frames_in_clip = []
+            for position, reader in enumerate(readers):
+                # the two clips have very different lengths: loop the short one instead of freezing it
+                use = index % max(1, counts[position])
+                try:
+                    last[position] = reader.get_data(use)
+                except (IndexError, RuntimeError):
+                    pass
+                frames_in_clip.append(last[position])
+            writer.append_data(np.vstack([fit(frame) for frame in frames_in_clip]))
+        writer.close()
+        frames = total
+        for reader in readers:
+            reader.close()
+        print(f"wrote video.mp4 (both games, {frames} frames)")
 
 
 if __name__ == "__main__":
